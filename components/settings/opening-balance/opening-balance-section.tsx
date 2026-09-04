@@ -113,7 +113,7 @@ export function OpeningBalanceSection({ accounts }: Props) {
           <p className="text-xs text-muted-foreground">As of {status?.asOfDate}</p>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-xs font-semibold uppercase text-gray-400">
+              <tr className="border-b border-line text-left font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-3">
                 <th className="py-2">Account</th>
                 <th className="py-2 text-right">Debit</th>
                 <th className="py-2 text-right">Credit</th>

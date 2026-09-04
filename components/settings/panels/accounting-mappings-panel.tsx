@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Trash2, Plus, ShieldOff } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  CreditCard,
+  Loader2,
+  Package,
+  Plus,
+  ShieldOff,
+  StickyNote,
+} from "lucide-react";
 import {
   Alert,
   AlertBody,
@@ -12,8 +18,13 @@ import {
 } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  ControlInput,
+  ControlTextarea,
+  RadioCards,
+  StandaloneField as Field,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +36,15 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsSection } from "../shared/settings-section";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import ProductSelector from "@/components/widgets/product-selector";
 import { searchProducts } from "@/lib/actions/product-actions";
@@ -50,6 +70,27 @@ import type { PaymentMethod, PaymentMethodChild } from "@/types/payments/type";
 interface Props {
   locationId: string;
 }
+
+const ICON = "h-3.5 w-3.5";
+
+/** Two options, each worth a sentence — hence cards rather than a select. */
+const SETTLEMENT_OPTIONS: readonly {
+  value: SettlementTreatment;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "IMMEDIATE",
+    label: "Money received immediately",
+    description: "Cash, bank, or till is debited as soon as the payment is taken.",
+  },
+  {
+    value: "RECEIVABLE",
+    label: "Provider owes us — settle later",
+    description:
+      "Posts to a holding / receivable account until the provider pays out.",
+  },
+];
 
 export function AccountingMappingsPanel({ locationId }: Props) {
   return (
@@ -93,92 +134,93 @@ function PaymentMethodMappings({ locationId }: { locationId: string }) {
 
   return (
     <SettingsSection
+      icon={<CreditCard className="h-4 w-4" />}
       title="Payment method accounts"
       description="Each POS payment posts a journal entry to the chart-of-account mapped here. Unmapped methods fall back to a suspense account."
-    >
-      {!accessError && (
-        <div className="flex justify-end">
+      footer={
+        accessError ? undefined : (
           <MappingDialog
             locationId={locationId}
             methods={methods}
             mappings={mappings}
             onSaved={refresh}
           />
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-6 flex justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : accessError ? (
+        )
+      }
+    >
+      {!loading && accessError ? (
         <PermissionDeniedNotice message={accessError} />
-      ) : mappings.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground italic">
-            No payment method mappings yet.
-          </CardContent>
-        </Card>
       ) : (
-        <div className="rounded-md border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-gray-50/60">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Payment method</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Chart of account</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Settlement</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
-                <th className="px-3 py-2 w-10" />
+        <SettingsTableCard
+          loading={loading}
+          isEmpty={mappings.length === 0}
+          emptyLabel="No payment method mappings yet."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Payment method</th>
+                <th className={thClass}>Chart of account</th>
+                <th className={thClass}>Settlement</th>
+                <th className={thClass}>Notes</th>
+                <th className={`${thClass} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {mappings.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-3 py-2">
-                    <div className="font-medium">
-                      {methods.find((x) => x.id === m.paymentMethodId)?.name ?? m.paymentMethodCode}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground font-mono">{m.paymentMethodCode}</div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="font-mono text-xs text-muted-foreground">{m.chartOfAccountCode ?? "—"}</div>
-                    <div className="text-sm">{m.chartOfAccountName ?? "—"}</div>
-                  </td>
-                  <td className="px-3 py-2">
-                    {m.settlementTreatment === "RECEIVABLE" ? (
-                      <Badge variant="warn" className="font-normal">Receivable</Badge>
-                    ) : (
-                      <Badge variant="soft" className="font-normal">Immediate</Badge>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">{m.notes || "—"}</td>
-                  <td className="px-3 py-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600"
-                      onClick={async () => {
-                        const res = await deletePaymentMethodMapping(m.id);
-                        if (res.responseType === "error") {
-                          toast({
-                            variant: "destructive",
-                            title: "Couldn't deactivate",
-                            description: res.message,
-                          });
-                          return;
-                        }
-                        toast({ title: "Deactivated", description: res.message });
-                        refresh();
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              {mappings.map((m) => {
+                const methodName =
+                  methods.find((x) => x.id === m.paymentMethodId)?.name ??
+                  m.paymentMethodCode;
+                return (
+                  <tr key={m.id} className={trClass}>
+                    <td className={tdClass}>
+                      <div className="font-medium text-ink">{methodName}</div>
+                      <div className="font-mono text-[10.5px] text-muted-foreground">
+                        {m.paymentMethodCode}
+                      </div>
+                    </td>
+                    <td className={tdClass}>
+                      <div className="font-mono text-[11px] text-muted-foreground">
+                        {m.chartOfAccountCode ?? "—"}
+                      </div>
+                      <div className="text-ink-2">{m.chartOfAccountName ?? "—"}</div>
+                    </td>
+                    <td className={tdClass}>
+                      {m.settlementTreatment === "RECEIVABLE" ? (
+                        <Badge variant="warn" className="font-normal">Receivable</Badge>
+                      ) : (
+                        <Badge variant="soft" className="font-normal">Immediate</Badge>
+                      )}
+                    </td>
+                    <td className={`${tdClass} max-w-[200px] truncate text-ink-3`}>
+                      {m.notes || "—"}
+                    </td>
+                    <td className={tdActionsClass}>
+                      <ConfirmDeleteButton
+                        confirmLabel="Deactivate"
+                        title={`Deactivate the ${methodName} mapping?`}
+                        description="New payments taken with this method post to the suspense account until it is mapped again. Journal entries already posted are unchanged."
+                        onConfirm={async () => {
+                          const res = await deletePaymentMethodMapping(m.id);
+                          if (res.responseType === "error") {
+                            toast({
+                              variant: "destructive",
+                              title: "Couldn't deactivate",
+                              description: res.message,
+                            });
+                            return;
+                          }
+                          toast({ title: "Deactivated", description: res.message });
+                          refresh();
+                        }}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
+        </SettingsTableCard>
       )}
     </SettingsSection>
   );
@@ -248,8 +290,8 @@ function MappingDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add mapping
+        <Button size="sm">
+          <Plus className={ICON} /> Add mapping
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -261,84 +303,95 @@ function MappingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Payment method</label>
-            <select
-              className="w-full h-10 rounded-md border px-3 text-sm"
-              value={paymentMethodId}
-              onChange={(e) => setPaymentMethodId(e.target.value)}
-              disabled={isPending || available.length === 0}
-            >
-              <option value="">Select a payment method</option>
-              {available.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} ({m.code})
-                </option>
-              ))}
-            </select>
-            {available.length === 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                All active payment methods already have a mapping.
-              </p>
+        <div className="space-y-3.5">
+          <Field
+            label="Payment method"
+            required
+            hint={
+              available.length === 0
+                ? "All active payment methods already have a mapping."
+                : undefined
+            }
+          >
+            {() => (
+              <Combobox
+                options={available.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                  description: m.code,
+                  keywords: [m.code],
+                }))}
+                value={paymentMethodId || null}
+                onChange={(v) => setPaymentMethodId(v ?? "")}
+                placeholder="Select a payment method"
+                searchPlaceholder="Search payment methods…"
+                emptyText="No payment methods found."
+                disabled={isPending || available.length === 0}
+                ariaLabel="Payment method"
+              />
             )}
-          </div>
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Settlement treatment</label>
-            <select
-              className="w-full h-10 rounded-md border px-3 text-sm"
-              value={settlementTreatment}
-              onChange={(e) =>
-                setSettlementTreatment(e.target.value as SettlementTreatment)
-              }
-              disabled={isPending}
-            >
-              <option value="IMMEDIATE">Money received immediately</option>
-              <option value="RECEIVABLE">Provider owes us — settle later</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Chart of account</label>
-            <ChartOfAccountSelector
-              accountTypes={ASSET_TYPES}
-              value={chartOfAccountId}
-              onChange={(val) => setChartOfAccountId(val)}
-              placeholder={
-                settlementTreatment === "RECEIVABLE"
-                  ? "Provider holding / receivable account (e.g. 15xx / A/R)"
-                  : "Typically an asset account (cash/bank/till)"
-              }
-              isDisabled={isPending}
-            />
-            {settlementTreatment === "RECEIVABLE" && (
-              <p className="text-[11px] text-muted-foreground">
-                Posts to a holding/receivable account until the provider pays
-                out, instead of cash/bank received now.
-              </p>
+          <Field label="Settlement treatment" required>
+            {() => (
+              <RadioCards
+                value={settlementTreatment}
+                onChange={setSettlementTreatment}
+                options={SETTLEMENT_OPTIONS}
+                disabled={isPending}
+                className="sm:grid-cols-1 lg:grid-cols-1"
+              />
             )}
-          </div>
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Notes</label>
-            <Textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-              disabled={isPending}
-            />
-          </div>
+          <Field
+            label="Chart of account"
+            required
+            hint={
+              settlementTreatment === "RECEIVABLE"
+                ? "Posts to a holding/receivable account until the provider pays out, instead of cash/bank received now."
+                : undefined
+            }
+          >
+            {() => (
+              <ChartOfAccountSelector
+                accountTypes={ASSET_TYPES}
+                value={chartOfAccountId}
+                onChange={(val) => setChartOfAccountId(val)}
+                placeholder={
+                  settlementTreatment === "RECEIVABLE"
+                    ? "Provider holding / receivable account (e.g. 15xx / A/R)"
+                    : "Typically an asset account (cash/bank/till)"
+                }
+                isDisabled={isPending}
+              />
+            )}
+          </Field>
+
+          <Field label="Notes" optional>
+            {(id) => (
+              <ControlTextarea
+                id={id}
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Settles to the main bank account T+2"
+                disabled={isPending}
+              />
+            )}
+          </Field>
         </div>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save
+          <Button
+            onClick={onSubmit}
+            disabled={isPending || !paymentMethodId || !chartOfAccountId}
+          >
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Saving…" : "Save mapping"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -374,74 +427,73 @@ function ProductRevenueMappings({ locationId }: { locationId: string }) {
 
   return (
     <SettingsSection
+      icon={<Package className="h-4 w-4" />}
       title="Product revenue routing"
       description="Route specific products to their own revenue account for per-product P&L. Unmapped products land in the default Sales Revenue bucket."
-    >
-      {!accessError && (
-        <div className="flex justify-end">
+      footer={
+        accessError ? undefined : (
           <ProductRevenueDialog locationId={locationId} onSaved={refresh} />
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-6 flex justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : accessError ? (
+        )
+      }
+    >
+      {!loading && accessError ? (
         <PermissionDeniedNotice message={accessError} />
-      ) : mappings.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground italic">
-            No product revenue mappings yet.
-          </CardContent>
-        </Card>
       ) : (
-        <div className="rounded-md border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-gray-50/60">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Product</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Revenue account</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Notes</th>
-                <th className="px-3 py-2 w-10" />
+        <SettingsTableCard
+          loading={loading}
+          isEmpty={mappings.length === 0}
+          emptyLabel="No product revenue mappings yet."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Product</th>
+                <th className={thClass}>Revenue account</th>
+                <th className={thClass}>Notes</th>
+                <th className={`${thClass} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {mappings.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-3 py-2 font-medium">{m.productName ?? m.productId.slice(0, 8)}</td>
-                  <td className="px-3 py-2">
-                    <div className="font-mono text-xs text-muted-foreground">{m.chartOfAccountCode ?? "—"}</div>
-                    <div className="text-sm">{m.chartOfAccountName ?? "—"}</div>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">{m.notes || "—"}</td>
-                  <td className="px-3 py-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600"
-                      onClick={async () => {
-                        const res = await deleteProductRevenueMapping(m.id);
-                        if (res.responseType === "error") {
-                          toast({
-                            variant: "destructive",
-                            title: "Couldn't deactivate",
-                            description: res.message,
-                          });
-                          return;
-                        }
-                        toast({ title: "Deactivated", description: res.message });
-                        refresh();
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+            <tbody>
+              {mappings.map((m) => {
+                const productLabel = m.productName ?? m.productId.slice(0, 8);
+                return (
+                  <tr key={m.id} className={trClass}>
+                    <td className={`${tdClass} font-medium`}>{productLabel}</td>
+                    <td className={tdClass}>
+                      <div className="font-mono text-[11px] text-muted-foreground">
+                        {m.chartOfAccountCode ?? "—"}
+                      </div>
+                      <div className="text-ink-2">{m.chartOfAccountName ?? "—"}</div>
+                    </td>
+                    <td className={`${tdClass} max-w-[200px] truncate text-ink-3`}>
+                      {m.notes || "—"}
+                    </td>
+                    <td className={tdActionsClass}>
+                      <ConfirmDeleteButton
+                        confirmLabel="Deactivate"
+                        title={`Stop routing ${productLabel} revenue?`}
+                        description="Sales of this product go back to the default Sales Revenue account. Journal entries already posted are unchanged."
+                        onConfirm={async () => {
+                          const res = await deleteProductRevenueMapping(m.id);
+                          if (res.responseType === "error") {
+                            toast({
+                              variant: "destructive",
+                              title: "Couldn't deactivate",
+                              description: res.message,
+                            });
+                            return;
+                          }
+                          toast({ title: "Deactivated", description: res.message });
+                          refresh();
+                        }}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
+        </SettingsTableCard>
       )}
     </SettingsSection>
   );
@@ -513,8 +565,8 @@ function ProductRevenueDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add mapping
+        <Button size="sm">
+          <Plus className={ICON} /> Add mapping
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -526,49 +578,57 @@ function ProductRevenueDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Product</label>
-            <ProductSelector
-              value={productId}
-              onChange={setProductId}
-              onBlur={() => {}}
-              isDisabled={isPending || products.length === 0}
-              label=""
-              placeholder={products.length === 0 ? "Loading products…" : "Select a product"}
-              products={products}
-            />
-          </div>
+        <div className="space-y-3.5">
+          <Field label="Product" required>
+            {() => (
+              <ProductSelector
+                value={productId}
+                onChange={setProductId}
+                onBlur={() => {}}
+                isDisabled={isPending || products.length === 0}
+                label=""
+                placeholder={products.length === 0 ? "Loading products…" : "Select a product"}
+                products={products}
+              />
+            )}
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Revenue account</label>
-            <ChartOfAccountSelector
-              accountType={"REVENUE" as AccountType}
-              value={chartOfAccountId}
-              onChange={(val) => setChartOfAccountId(val)}
-              placeholder="Typically a REVENUE account"
-              isDisabled={isPending}
-            />
-          </div>
+          <Field label="Revenue account" required>
+            {() => (
+              <ChartOfAccountSelector
+                accountType={"REVENUE" as AccountType}
+                value={chartOfAccountId}
+                onChange={(val) => setChartOfAccountId(val)}
+                placeholder="Typically a REVENUE account"
+                isDisabled={isPending}
+              />
+            )}
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Notes</label>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-              disabled={isPending}
-            />
-          </div>
+          <Field label="Notes" optional>
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<StickyNote className={ICON} />}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Keeps catering revenue separate"
+                disabled={isPending}
+              />
+            )}
+          </Field>
         </div>
 
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save
+          <Button
+            onClick={onSubmit}
+            disabled={isPending || !productId || !chartOfAccountId}
+          >
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Saving…" : "Save mapping"}
           </Button>
         </DialogFooter>
       </DialogContent>

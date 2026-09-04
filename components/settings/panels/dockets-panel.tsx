@@ -6,6 +6,7 @@ import { RadioCards, ToggleRow } from "@/components/ui/field";
 import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -62,10 +63,6 @@ export function DocketsPanel({
         icon={<Printer className="h-4 w-4" />}
         title="Docket content & printing"
         description="What each docket shows and when it prints."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ToggleRow
@@ -138,10 +135,6 @@ export function DocketsPanel({
         icon={<Ruler className="h-4 w-4" />}
         title="Bill & receipt print density"
         description="How tightly the modern layout packs bills and receipts on 80mm rolls. Kitchen dockets always print at full size; 58mm rolls and the classic text layout ignore this."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <RadioCards
           // Whitelist rather than `?? "STANDARD"`: a value this build doesn't
@@ -157,6 +150,13 @@ export function DocketsPanel({
           disabled={d}
         />
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

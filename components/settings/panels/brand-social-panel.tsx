@@ -31,6 +31,7 @@ import { isDisplayableImageUrl } from "@/lib/image-url";
 import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -123,10 +124,6 @@ export function BrandSocialPanel({
         icon={<Palette className="h-4 w-4" />}
         title="Brand identity"
         description="Colours, type, and imagery used on receipts, the digital menu, and other branded surfaces."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:col-span-2">
@@ -214,10 +211,6 @@ export function BrandSocialPanel({
         icon={<Share2 className="h-4 w-4" />}
         title="Social media"
         description="Links and contact details for this location."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Facebook">
@@ -333,10 +326,6 @@ export function BrandSocialPanel({
         icon={<Search className="h-4 w-4" />}
         title="SEO"
         description="Page title and description used by search engines and social previews."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-3.5 lg:col-span-2">
@@ -394,6 +383,13 @@ export function BrandSocialPanel({
           </div>
         </div>
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }
@@ -485,6 +481,9 @@ function BrandPreview({
         className="flex items-center gap-3 px-4 py-3"
         style={{ backgroundColor: p, color: contrastText(p), fontFamily }}
       >
+        {/* White-alpha here is deliberate: this strip is filled with the
+            merchant's own primary colour, so the logo plate and the initial
+            fallback sit on it rather than on a theme surface. */}
         {isDisplayableImageUrl(logo) ? (
           // eslint-disable-next-line @next/next/no-img-element -- upload host isn't in next/image remotePatterns
           <img

@@ -1,16 +1,19 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Award, CalendarClock, Coins, Star, UserCircle, Users } from "lucide-react";
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+  ControlInput,
+  RadioCards,
+  SegmentedRadio,
+  StandaloneField as Field,
+  ToggleRow,
+  standaloneLabelClass,
+} from "@/components/ui/field";
+import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 import {
   LOYALTY_AWARD_TYPE_OPTIONS,
@@ -37,6 +40,22 @@ const KEYS = [
   "pointExpirationDays",
 ] as const;
 
+const ICON = "h-3.5 w-3.5";
+
+const RECIPIENT_CARDS = STAFF_POINTS_RECIPIENT_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+  description:
+    o.value === "FINISHED_BY"
+      ? "The person who settled and closed the order takes the points."
+      : o.value === "ASSIGNED_TO"
+        ? "The waiter or agent the order was assigned to takes the points."
+        : "Points are shared between the assigned and the closing staff.",
+}));
+
+/** Right-hand unit on points inputs, so a bare number never reads ambiguously. */
+const PTS = "pts";
+
 export function LoyaltyRewardsPanel({
   settings,
   onSaved,
@@ -46,6 +65,8 @@ export function LoyaltyRewardsPanel({
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
+  const d = p.isPending;
+  const currency = settings.currency || undefined;
 
   return (
     <div className="space-y-6">
@@ -55,301 +76,341 @@ export function LoyaltyRewardsPanel({
       />
 
       <SettingsSection
+        icon={<UserCircle className="h-4 w-4" />}
         title="Customer accounts & reviews"
         description="Self-service sign-in, order tracking, and post-order reviews."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
-        <SettingsSwitchRow
-          label="Enable customer accounts"
-          description="Allow customers to register, save addresses, and track orders."
-          checked={!!v.enableCustomerAccounts}
-          onChange={(x) => p.setField("enableCustomerAccounts", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Enable customer reviews"
-          description="Collect ratings and comments after each order."
-          checked={!!v.enableCustomerReviews}
-          onChange={(x) => p.setField("enableCustomerReviews", x)}
-          disabled={p.isPending}
-        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
+            label="Customer accounts"
+            hint="Customers can register, save addresses and track orders."
+            checked={!!v.enableCustomerAccounts}
+            onChange={(x) => p.setField("enableCustomerAccounts", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Customer reviews"
+            hint="Collect ratings and comments after each order."
+            checked={!!v.enableCustomerReviews}
+            onChange={(x) => p.setField("enableCustomerReviews", x)}
+            disabled={d}
+          />
+        </div>
       </SettingsSection>
 
       <SettingsSection
+        icon={<Star className="h-4 w-4" />}
         title="Customer loyalty"
-        description="Reward returning customers. Points are per-location."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
+        description="Reward returning customers. Points are held per location."
       >
-        <SettingsSwitchRow
-          label="Enable loyalty program"
+        <ToggleRow
+          label="Loyalty program"
+          hint="Award points on qualifying orders and let customers redeem them."
           checked={!!v.enableLoyaltyProgram}
           onChange={(x) => p.setField("enableLoyaltyProgram", x)}
-          disabled={p.isPending}
+          disabled={d}
         />
+
         {v.enableLoyaltyProgram && (
-          <>
-            <Field label="Award type">
-              <Select
+          <div className="space-y-3.5 border-t border-dashed border-line pt-4">
+            <div className="space-y-[7px]">
+              <span className={standaloneLabelClass}>How points are earned</span>
+              <SegmentedRadio
                 value={v.customerLoyaltyAwardType ?? "PER_ORDER"}
-                onValueChange={(val) =>
+                onChange={(val) =>
                   p.setField(
                     "customerLoyaltyAwardType",
                     val as LocationSettings["customerLoyaltyAwardType"],
                   )
                 }
-                disabled={p.isPending}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LOYALTY_AWARD_TYPE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                options={LOYALTY_AWARD_TYPE_OPTIONS}
+                disabled={d}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
               {v.customerLoyaltyAwardType === "PER_ORDER" ? (
-                <Field label="Points per order">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={v.customerLoyaltyPointsPerOrder ?? ""}
-                    onChange={(e) =>
-                      p.setField(
-                        "customerLoyaltyPointsPerOrder",
-                        e.target.value === "" ? null : Number(e.target.value),
-                      )
-                    }
-                    disabled={p.isPending}
-                  />
+                <Field label="Points per order" hint="Awarded once per qualifying order.">
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      type="number"
+                      inputMode="numeric"
+                      mono
+                      min={1}
+                      suffix={PTS}
+                      prefix={<Award className={ICON} />}
+                      value={v.customerLoyaltyPointsPerOrder ?? ""}
+                      onChange={(e) =>
+                        p.setField(
+                          "customerLoyaltyPointsPerOrder",
+                          parseOptionalNumber(e.target.value),
+                        )
+                      }
+                      placeholder="1"
+                      disabled={d}
+                    />
+                  )}
                 </Field>
               ) : (
                 <>
-                  <Field label="Points per threshold">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={v.customerLoyaltyPointsPerValue ?? ""}
-                      onChange={(e) =>
-                        p.setField(
-                          "customerLoyaltyPointsPerValue",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
-                      }
-                      disabled={p.isPending}
-                    />
+                  <Field label="Points awarded" hint="Per threshold reached below.">
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        type="number"
+                        inputMode="numeric"
+                        mono
+                        min={1}
+                        suffix={PTS}
+                        prefix={<Award className={ICON} />}
+                        value={v.customerLoyaltyPointsPerValue ?? ""}
+                        onChange={(e) =>
+                          p.setField(
+                            "customerLoyaltyPointsPerValue",
+                            parseOptionalNumber(e.target.value),
+                          )
+                        }
+                        placeholder="1"
+                        disabled={d}
+                      />
+                    )}
                   </Field>
-                  <Field label="Value threshold">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={v.customerLoyaltyValueThreshold ?? ""}
-                      onChange={(e) =>
-                        p.setField(
-                          "customerLoyaltyValueThreshold",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
-                      }
-                      disabled={p.isPending}
-                    />
+                  <Field label="Value threshold" hint="Order value that earns those points.">
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        type="number"
+                        inputMode="decimal"
+                        mono
+                        min={1}
+                        suffix={currency}
+                        prefix={<Coins className={ICON} />}
+                        value={v.customerLoyaltyValueThreshold ?? ""}
+                        onChange={(e) =>
+                          p.setField(
+                            "customerLoyaltyValueThreshold",
+                            parseOptionalNumber(e.target.value),
+                          )
+                        }
+                        placeholder="1000"
+                        disabled={d}
+                      />
+                    )}
                   </Field>
                 </>
               )}
-              <Field label="Minimum redeemable points">
-                <Input
-                  type="number"
-                  min={0}
-                  value={v.customerLoyaltyMinimumRedeemablePoints ?? ""}
-                  onChange={(e) =>
-                    p.setField(
-                      "customerLoyaltyMinimumRedeemablePoints",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                  disabled={p.isPending}
-                />
+              <Field
+                label="Minimum to redeem"
+                hint="Balance a customer needs before they can spend points."
+              >
+                {(id) => (
+                  <ControlInput
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    mono
+                    min={0}
+                    suffix={PTS}
+                    prefix={<Star className={ICON} />}
+                    value={v.customerLoyaltyMinimumRedeemablePoints ?? ""}
+                    onChange={(e) =>
+                      p.setField(
+                        "customerLoyaltyMinimumRedeemablePoints",
+                        parseOptionalNumber(e.target.value),
+                      )
+                    }
+                    placeholder="0"
+                    disabled={d}
+                  />
+                )}
               </Field>
             </div>
-          </>
+          </div>
         )}
       </SettingsSection>
 
       <SettingsSection
+        icon={<Users className="h-4 w-4" />}
         title="Staff points"
-        description="Reward staff for closing orders. Separate wallet from customer loyalty."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
+        description="Reward staff for closing orders. A separate wallet from customer loyalty."
       >
-        <SettingsSwitchRow
-          label="Enable staff points"
+        <ToggleRow
+          label="Staff points"
+          hint="Award points to staff on qualifying orders."
           checked={!!v.enableStaffPoints}
           onChange={(x) => p.setField("enableStaffPoints", x)}
-          disabled={p.isPending}
+          disabled={d}
         />
+
         {v.enableStaffPoints && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Field label="Award type">
-                <Select
-                  value={v.staffPointsAwardType ?? "PER_ORDER"}
-                  onValueChange={(val) =>
-                    p.setField(
-                      "staffPointsAwardType",
-                      val as LocationSettings["staffPointsAwardType"],
-                    )
-                  }
-                  disabled={p.isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOYALTY_AWARD_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Recipient">
-                <Select
-                  value={v.staffPointsRecipient ?? "FINISHED_BY"}
-                  onValueChange={(val) =>
-                    p.setField(
-                      "staffPointsRecipient",
-                      val as LocationSettings["staffPointsRecipient"],
-                    )
-                  }
-                  disabled={p.isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_POINTS_RECIPIENT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+          <div className="space-y-3.5 border-t border-dashed border-line pt-4">
+            <div className="space-y-[7px]">
+              <span className={standaloneLabelClass}>How points are earned</span>
+              <SegmentedRadio
+                value={v.staffPointsAwardType ?? "PER_ORDER"}
+                onChange={(val) =>
+                  p.setField(
+                    "staffPointsAwardType",
+                    val as LocationSettings["staffPointsAwardType"],
+                  )
+                }
+                options={LOYALTY_AWARD_TYPE_OPTIONS}
+                disabled={d}
+              />
+            </div>
+
+            <div className="space-y-[7px]">
+              <span className={standaloneLabelClass}>Who receives the points</span>
+              <RadioCards
+                value={v.staffPointsRecipient ?? "FINISHED_BY"}
+                onChange={(val) =>
+                  p.setField(
+                    "staffPointsRecipient",
+                    val as LocationSettings["staffPointsRecipient"],
+                  )
+                }
+                options={RECIPIENT_CARDS}
+                disabled={d}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
               {v.staffPointsAwardType === "PER_ORDER" ? (
-                <Field label="Points per order">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={v.staffPointsPerOrder ?? ""}
-                    onChange={(e) =>
-                      p.setField(
-                        "staffPointsPerOrder",
-                        e.target.value === "" ? null : Number(e.target.value),
-                      )
-                    }
-                    disabled={p.isPending}
-                  />
+                <Field label="Points per order" hint="Awarded once per qualifying order.">
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      type="number"
+                      inputMode="numeric"
+                      mono
+                      min={1}
+                      suffix={PTS}
+                      prefix={<Award className={ICON} />}
+                      value={v.staffPointsPerOrder ?? ""}
+                      onChange={(e) =>
+                        p.setField("staffPointsPerOrder", parseOptionalNumber(e.target.value))
+                      }
+                      placeholder="1"
+                      disabled={d}
+                    />
+                  )}
                 </Field>
               ) : (
                 <>
-                  <Field label="Points per threshold">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={v.staffPointsPerValue ?? ""}
-                      onChange={(e) =>
-                        p.setField(
-                          "staffPointsPerValue",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
-                      }
-                      disabled={p.isPending}
-                    />
+                  <Field label="Points awarded" hint="Per threshold reached below.">
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        type="number"
+                        inputMode="numeric"
+                        mono
+                        min={1}
+                        suffix={PTS}
+                        prefix={<Award className={ICON} />}
+                        value={v.staffPointsPerValue ?? ""}
+                        onChange={(e) =>
+                          p.setField("staffPointsPerValue", parseOptionalNumber(e.target.value))
+                        }
+                        placeholder="1"
+                        disabled={d}
+                      />
+                    )}
                   </Field>
-                  <Field label="Value threshold">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={v.staffPointsValueThreshold ?? ""}
-                      onChange={(e) =>
-                        p.setField(
-                          "staffPointsValueThreshold",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
-                      }
-                      disabled={p.isPending}
-                    />
+                  <Field label="Value threshold" hint="Order value that earns those points.">
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        type="number"
+                        inputMode="decimal"
+                        mono
+                        min={1}
+                        suffix={currency}
+                        prefix={<Coins className={ICON} />}
+                        value={v.staffPointsValueThreshold ?? ""}
+                        onChange={(e) =>
+                          p.setField(
+                            "staffPointsValueThreshold",
+                            parseOptionalNumber(e.target.value),
+                          )
+                        }
+                        placeholder="1000"
+                        disabled={d}
+                      />
+                    )}
                   </Field>
                 </>
               )}
-              <Field label="Minimum redeemable points">
-                <Input
-                  type="number"
-                  min={0}
-                  value={v.staffMinimumRedeemablePoints ?? ""}
-                  onChange={(e) =>
-                    p.setField(
-                      "staffMinimumRedeemablePoints",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                  disabled={p.isPending}
-                />
+              <Field label="Minimum to redeem" hint="Balance staff need before spending points.">
+                {(id) => (
+                  <ControlInput
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    mono
+                    min={0}
+                    suffix={PTS}
+                    prefix={<Star className={ICON} />}
+                    value={v.staffMinimumRedeemablePoints ?? ""}
+                    onChange={(e) =>
+                      p.setField(
+                        "staffMinimumRedeemablePoints",
+                        parseOptionalNumber(e.target.value),
+                      )
+                    }
+                    placeholder="0"
+                    disabled={d}
+                  />
+                )}
               </Field>
             </div>
-          </>
+          </div>
         )}
       </SettingsSection>
 
       <SettingsSection
+        icon={<CalendarClock className="h-4 w-4" />}
         title="Point expiration"
         description="Applies to both customer and staff points."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
-        <SettingsSwitchRow
-          label="Expire unused points"
-          checked={!!v.enablePointExpiration}
-          onChange={(x) => p.setField("enablePointExpiration", x)}
-          disabled={p.isPending}
-        />
-        {v.enablePointExpiration && (
-          <Field label="Expire after (days)">
-            <Input
-              type="number"
-              min={1}
-              max={3650}
-              value={v.pointExpirationDays ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "pointExpirationDays",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ToggleRow
+            label="Expire unused points"
+            hint="Points lapse if untouched for the window below."
+            checked={!!v.enablePointExpiration}
+            onChange={(x) => p.setField("enablePointExpiration", x)}
+            disabled={d}
+            className="sm:col-span-1 lg:col-span-2"
+          />
+          <Field label="Expire after" hint="Counted from the last time points moved.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                max={3650}
+                suffix="days"
+                prefix={<CalendarClock className={ICON} />}
+                value={v.pointExpirationDays ?? ""}
+                onChange={(e) =>
+                  p.setField("pointExpirationDays", parseOptionalNumber(e.target.value))
+                }
+                placeholder="365"
+                disabled={d || !v.enablePointExpiration}
+              />
+            )}
           </Field>
-        )}
+        </div>
       </SettingsSection>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

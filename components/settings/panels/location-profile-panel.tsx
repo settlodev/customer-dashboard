@@ -25,6 +25,11 @@ import { SettingsSection, parseOptionalNumber } from "../shared/settings-section
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
 import { IdentifierChip } from "../shared/identifier-chip";
+import {
+  SettingsSaveBar,
+  combineSaveScopes,
+  type SaveScope,
+} from "../shared/settings-save-bar";
 import { DangerZonePanel } from "./danger-zone-panel";
 import type { LocationSettings } from "@/types/location-settings/type";
 import type { Location } from "@/types/location/type";
@@ -63,16 +68,17 @@ export function LocationProfilePanel({
   onLocationSaved,
 }: Props) {
   const panel = useSettingsPanel(PROFILE_KEYS, settings, onSaved);
+  // The Location entity and its settings row are separate records on separate
+  // endpoints; one page bar saves whichever of them the user actually touched.
+  const details = useLocationDetails(location, onLocationSaved);
+  const page = combineSaveScopes(panel, details);
   const d = panel.isPending;
   const currencyCode = panel.values.currency ?? settings.currency ?? "";
 
   return (
     <div className="space-y-6">
       {location ? (
-        <LocationDetailsCard
-          location={location}
-          onLocationSaved={onLocationSaved}
-        />
+        <LocationDetailsCard details={details} location={location} />
       ) : (
         <PanelHeader
           title="Location"
@@ -84,10 +90,6 @@ export function LocationProfilePanel({
         icon={<Coins className="h-4 w-4" />}
         title="Currency, locale & guard-rails"
         description="Base currency and limits that apply across POS, receipts, and reports."
-        onSave={panel.save}
-        onDiscard={() => panel.reset()}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Currency">
@@ -187,6 +189,13 @@ export function LocationProfilePanel({
         </div>
       </SettingsSection>
 
+      <SettingsSaveBar
+        dirtyCount={page.dirtyCount}
+        isPending={page.isPending}
+        onSave={page.save}
+        onDiscard={page.reset}
+      />
+
       <DangerZonePanel onReset={onSaved} />
     </div>
   );
@@ -211,6 +220,23 @@ type LocationFormState = {
   latitude: string;
   longitude: string;
   timezone: string;
+};
+
+const EMPTY_FORM: LocationFormState = {
+  name: "",
+  description: "",
+  phoneNumber: "",
+  email: "",
+  countryId: "",
+  businessTypeId: "",
+  region: "",
+  district: "",
+  ward: "",
+  address: "",
+  postalCode: "",
+  latitude: "",
+  longitude: "",
+  timezone: "",
 };
 
 function toForm(l: Location): LocationFormState {
@@ -272,17 +298,25 @@ function diffToPatch(
   return patch;
 }
 
-function LocationDetailsCard({
-  location,
-  onLocationSaved,
-}: {
-  location: Location;
-  onLocationSaved: (next: Location) => void;
-}) {
+interface LocationDetailsScope extends SaveScope {
+  form: LocationFormState;
+  setField: <K extends keyof LocationFormState>(
+    key: K,
+    value: LocationFormState[K],
+  ) => void;
+}
+
+function useLocationDetails(
+  location: Location | null,
+  onLocationSaved: (next: Location) => void,
+): LocationDetailsScope {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
-  const initial = useMemo(() => toForm(location), [location]);
+  const initial = useMemo(
+    () => (location ? toForm(location) : EMPTY_FORM),
+    [location],
+  );
   const [form, setForm] = useState<LocationFormState>(initial);
   const [baseline, setBaseline] = useState<LocationFormState>(initial);
 
@@ -301,7 +335,7 @@ function LocationDetailsCard({
   ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const save = () => {
-    if (!isDirty) return;
+    if (!isDirty || !location) return;
     startTransition(async () => {
       const res = await updateLocationBasics(location.id, patch);
       if (res.responseType === "error") {
@@ -319,7 +353,26 @@ function LocationDetailsCard({
     });
   };
 
-  const d = isPending;
+  return {
+    form,
+    setField,
+    dirtyCount: Object.keys(patch).length,
+    isDirty,
+    isPending,
+    save,
+    reset: () => setForm(baseline),
+  };
+}
+
+/** Presentational half of {@link useLocationDetails}. */
+function LocationDetailsCard({
+  details,
+  location,
+}: {
+  details: LocationDetailsScope;
+  location: Location;
+}) {
+  const { form, setField, isPending: d } = details;
 
   return (
     <div className="space-y-6">
@@ -341,10 +394,6 @@ function LocationDetailsCard({
         icon={<Store className="h-4 w-4" />}
         title="Location profile"
         description="How this branch is named and reached."
-        onSave={save}
-        onDiscard={() => setForm(baseline)}
-        isDirty={isDirty}
-        isPending={isPending}
       >
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Location name" required className="sm:col-span-2">

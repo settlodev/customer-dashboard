@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import {
   PageShell,
@@ -221,17 +222,17 @@ function LocationSettingsPage() {
         <div className="flex items-center justify-center min-h-[60vh]">
           <Card className="w-full max-w-md mx-4">
             <CardContent className="p-8 text-center space-y-4">
-              <div className="mx-auto w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-7 w-7 text-red-500" />
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-neg-tint text-neg">
+                <AlertTriangle className="h-7 w-7" />
               </div>
-              <h3 className="text-lg font-semibold">Error Loading Settings</h3>
+              <h3 className="text-lg font-semibold text-ink">
+                Couldn&apos;t load settings
+              </h3>
               <p className="text-sm text-muted-foreground">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-              >
+              <Button type="button" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-3.5 w-3.5" />
                 Retry
-              </button>
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -357,7 +358,12 @@ function SettingsLayout({
         return <LoyaltyRewardsPanel settings={settings} onSaved={onSettingsSaved} />;
       case "customer-prepayments":
         if (!location) return <EmptyState label="Location unavailable" />;
-        return <CustomerPrepaymentsPanel locationId={location.id} />;
+        return (
+          <CustomerPrepaymentsPanel
+            locationId={location.id}
+            currency={settings?.currency}
+          />
+        );
       case "staff-hr":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <StaffHrPanel settings={settings} onSaved={onSettingsSaved} />;

@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CalendarOff, Lock, Unlock } from "lucide-react";
+import { CalendarRange, Loader2, Lock, RefreshCw, Unlock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
 import {
   closeAccountingPeriod,
   listAccountingPeriods,
@@ -117,107 +124,149 @@ export function AccountingPeriodsPanel({
         p.status === "CLOSED",
     );
 
+  const previousClosed = isClosed(previousYear, previousMonth);
+
   return (
     <SettingsSection
       title="Accounting periods"
       description="Close month-end to lock journal posting for that period. Reopen requires a reason."
+      icon={<CalendarRange className="h-4 w-4" />}
+      footer={
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => reload()}
+          disabled={loading || isPending}
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
+      }
     >
-      <Card className="border-line">
-        <CardContent className="space-y-3 pt-5">
-          <div className="flex items-center justify-between rounded-md border bg-card px-4 py-3">
-            <div>
-              <p className="font-medium">
-                {MONTHS[previousMonth - 1]} {previousYear}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {isClosed(previousYear, previousMonth)
-                  ? "Closed — no further postings allowed"
-                  : "Open — close to prevent backdated postings"}
-              </p>
-            </div>
-            {isClosed(previousYear, previousMonth) ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => reopenMonth(previousYear, previousMonth)}
-              >
-                <Unlock className="mr-1.5 h-3.5 w-3.5" />
-                Reopen
-              </Button>
+      {/* Month-end shortcut: the period a merchant is most likely to act on. */}
+      <div className="flex flex-col gap-3 rounded-[10px] border border-line bg-canvas px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-[9px] border ${
+              previousClosed
+                ? "border-neg/30 bg-neg-tint text-neg"
+                : "border-line bg-card text-ink-2"
+            }`}
+          >
+            {previousClosed ? (
+              <Lock className="h-4 w-4" />
             ) : (
-              <Button
-                size="sm"
-                disabled={isPending}
-                onClick={() => closeMonth(previousYear, previousMonth)}
-              >
-                <Lock className="mr-1.5 h-3.5 w-3.5" />
-                Close month
-              </Button>
+              <Unlock className="h-4 w-4" />
             )}
-          </div>
-
-          <h4 className="pt-4 text-xs font-medium uppercase text-muted-foreground tracking-wider">
-            All periods
-          </h4>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : loadError ? (
-            <p className="text-sm text-red-600">{loadError}</p>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No periods on file. Close the previous month to start.
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-ink">
+              {MONTHS[previousMonth - 1]} {previousYear}
             </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                  <th className="px-4 py-2">Period</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Closed at</th>
-                  <th className="px-4 py-2 text-right">Actions</th>
+            <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+              {previousClosed
+                ? "Closed — no further postings allowed"
+                : "Open — close to prevent backdated postings"}
+            </p>
+          </div>
+        </div>
+        {previousClosed ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => reopenMonth(previousYear, previousMonth)}
+          >
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Unlock className="h-3.5 w-3.5" />
+            )}
+            {isPending ? "Reopening…" : "Reopen"}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            disabled={isPending}
+            onClick={() => closeMonth(previousYear, previousMonth)}
+          >
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Lock className="h-3.5 w-3.5" />
+            )}
+            {isPending ? "Closing…" : "Close month"}
+          </Button>
+        )}
+      </div>
+
+      <h4 className="pt-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+        All periods
+      </h4>
+      {loadError && !loading ? (
+        <div className="rounded-xl border border-neg/40 bg-neg-tint px-4 py-8 text-center text-[13px] text-neg">
+          {loadError}
+        </div>
+      ) : (
+        <SettingsTableCard
+          loading={loading}
+          isEmpty={items.length === 0}
+          emptyLabel="No periods on file. Close the previous month to start."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Period</th>
+                <th className={thClass}>Status</th>
+                <th className={thClass}>Closed at</th>
+                <th className={`${thClass} text-right`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((p) => (
+                <tr key={p.id} className={trClass}>
+                  <td className={`${tdClass} font-medium`}>
+                    {MONTHS[p.month - 1]} {p.year}
+                  </td>
+                  <td className={tdClass}>
+                    {p.status === "CLOSED" ? (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-neg">
+                        <Lock className="h-3.5 w-3.5" />
+                        Closed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-pos">
+                        <Unlock className="h-3.5 w-3.5" />
+                        Open
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className={`${tdClass} font-mono text-[12px] tabular-nums text-ink-2`}
+                  >
+                    {p.closedAt ? new Date(p.closedAt).toLocaleString() : "—"}
+                  </td>
+                  <td className={tdActionsClass}>
+                    {p.status === "CLOSED" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={isPending}
+                        onClick={() => reopenMonth(p.year, p.month)}
+                      >
+                        <Unlock className="h-3.5 w-3.5" />
+                        Reopen
+                      </Button>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y">
-                {items.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-2 font-medium">
-                      {MONTHS[p.month - 1]} {p.year}
-                    </td>
-                    <td className="px-4 py-2">
-                      {p.status === "CLOSED" ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-600">
-                          <CalendarOff className="h-3 w-3" />
-                          Closed
-                        </span>
-                      ) : (
-                        <span className="text-xs text-green-600">Open</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs">
-                      {p.closedAt
-                        ? new Date(p.closedAt).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {p.status === "CLOSED" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending}
-                          onClick={() => reopenMonth(p.year, p.month)}
-                        >
-                          Reopen
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </tbody>
+          </table>
+        </SettingsTableCard>
+      )}
     </SettingsSection>
   );
 }

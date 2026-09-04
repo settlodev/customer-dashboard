@@ -41,10 +41,12 @@ export function SettingsNavShell({
       {/* Mobile selector */}
       <div className="lg:hidden">
         <button
+          type="button"
           onClick={() => setIsMobileMenuOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-card border rounded-xl shadow-sm"
+          aria-expanded={isMobileMenuOpen}
+          className="flex w-full items-center justify-between rounded-xl border border-line bg-card px-4 py-3 text-ink shadow-sm transition-colors hover:border-ink-3"
         >
-          <span className="font-medium">{currentLabel}</span>
+          <span className="text-[13px] font-medium">{currentLabel}</span>
           {isMobileMenuOpen ? (
             <X className="h-5 w-5" />
           ) : (
@@ -52,7 +54,7 @@ export function SettingsNavShell({
           )}
         </button>
         {isMobileMenuOpen && (
-          <div className="absolute z-50 left-4 right-4 mt-2 bg-white border rounded-xl shadow-lg">
+          <div className="absolute left-4 right-4 z-50 mt-2 overflow-hidden rounded-xl border border-line bg-card shadow-lg">
             <nav className="py-1">
               {items.map((item) => {
                 const Icon = item.icon;
@@ -60,16 +62,24 @@ export function SettingsNavShell({
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => select(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left ${isActive ? "bg-primary/10 text-primary" : "hover:bg-gray-100"}`}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-ink-2 hover:bg-canvas"
+                    }`}
                   >
                     <Icon
-                      className={`h-5 w-5 ${isActive ? "text-primary" : "text-gray-400"}`}
+                      className={`h-5 w-5 shrink-0 ${isActive ? "text-primary" : "text-muted-2"}`}
                     />
-                    <div>
-                      <span className="font-medium text-sm">{item.label}</span>
+                    <div className="min-w-0">
+                      <span className="block text-[13px] font-medium">
+                        {item.label}
+                      </span>
                       <p
-                        className={`text-xs mt-0.5 ${isActive ? "text-primary/70" : "text-gray-400"}`}
+                        className={`mt-0.5 text-[12px] ${isActive ? "text-primary/70" : "text-muted-foreground"}`}
                       >
                         {item.description}
                       </p>
@@ -84,35 +94,39 @@ export function SettingsNavShell({
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         <nav className="hidden lg:block lg:w-64 flex-shrink-0">
-          <div className="bg-card border rounded-xl p-2 space-y-1 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto shadow-sm">
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] space-y-1 overflow-y-auto rounded-xl border border-line bg-card p-2 shadow-sm">
             {items.map((item) => {
               const Icon = item.icon;
               const isActive = activeId === item.id;
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => onSelect(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
                     isActive
                       ? "bg-primary/10 text-primary"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600"
+                      : "text-ink-2 hover:bg-canvas"
                   }`}
                 >
                   <div
-                    className={`flex items-center justify-center w-8 h-8 rounded-lg ${isActive ? "bg-primary/15" : "bg-gray-100 dark:bg-gray-800"}`}
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+                      isActive ? "bg-primary/15" : "border border-line bg-canvas"
+                    }`}
                   >
                     <Icon
-                      className={`h-4 w-4 ${isActive ? "text-primary" : "text-gray-500"}`}
+                      className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`}
                     />
                   </div>
                   <div className="min-w-0">
                     <span
-                      className={`text-sm font-medium block ${isActive ? "text-primary" : ""}`}
+                      className={`block text-[13px] font-medium ${isActive ? "text-primary" : "text-ink"}`}
                     >
                       {item.label}
                     </span>
                     <span
-                      className={`text-xs block truncate ${isActive ? "text-primary/60" : "text-gray-400"}`}
+                      className={`block truncate text-[11.5px] ${isActive ? "text-primary/60" : "text-muted-foreground"}`}
                     >
                       {item.description}
                     </span>
