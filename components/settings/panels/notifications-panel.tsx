@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellRing, Mail, Phone, Users } from "lucide-react";
+import { Bell, BellRing, FileText, Mail, Phone, Users } from "lucide-react";
 
 import {
   ControlInput,
@@ -27,6 +27,9 @@ const KEYS = [
   "alertPhoneNumber",
   "sendDailySalesEmail",
   "sendWeeklySalesEmail",
+  "sendMonthlyPlReportEmail",
+  "monthlyPlReportEmail",
+  "monthlyPlReportEmailCc",
 ] as const;
 
 const ICON = "h-3.5 w-3.5";
@@ -231,6 +234,52 @@ export function NotificationsPanel({
             onChange={(x) => p.setField("sendWeeklySalesEmail", x)}
             disabled={d || emailOff}
           />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        icon={<FileText className="h-4 w-4" />}
+        title="Monthly statements"
+        description="The profit & loss statement for the month just ended, sent on the morning of the 1st with a shareable link. Its own recipients, so it can go to your accountant."
+      >
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <ToggleRow
+              label="Monthly profit & loss"
+              hint="Last month's statement, emailed on the 1st."
+              checked={!!v.sendMonthlyPlReportEmail}
+              onChange={(x) => p.setField("sendMonthlyPlReportEmail", x)}
+              disabled={d || emailOff}
+            />
+          </div>
+          <Field label="Statement email">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="email"
+                inputMode="email"
+                maxLength={255}
+                prefix={<Mail className={ICON} />}
+                placeholder="accounts@business.com"
+                value={v.monthlyPlReportEmail ?? ""}
+                onChange={(e) => p.setField("monthlyPlReportEmail", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
+          </Field>
+          <Field label="Statement CC" hint="Comma-separated addresses.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={512}
+                prefix={<Mail className={ICON} />}
+                placeholder="owner@business.com, cfo@business.com"
+                value={v.monthlyPlReportEmailCc ?? ""}
+                onChange={(e) => p.setField("monthlyPlReportEmailCc", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
+          </Field>
         </div>
       </SettingsSection>
 
