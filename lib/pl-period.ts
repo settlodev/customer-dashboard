@@ -1,8 +1,8 @@
 /**
  * Pure range helpers for the Profit & Loss page. Server-safe (the page
  * resolves its default window here) and client-safe (the period control
- * steps months and detects presets here). Dates are `yyyy-MM-dd` strings on
- * the wire; months are `yyyy-MM`.
+ * builds its presets and steps months here). Dates are `yyyy-MM-dd` strings
+ * on the wire; months are `yyyy-MM`.
  */
 
 import {
@@ -20,7 +20,6 @@ import {
 } from "date-fns";
 
 export type PlView = "statement" | "monthly";
-export type PlPreset = "month" | "year" | "last12" | "custom";
 
 export interface PlRange {
   from: string;
@@ -109,20 +108,6 @@ export function toMonthRange(from: string, to: string): { fromMonth: string; toM
   const span = differenceInCalendarMonths(t, f) + 1;
   const clampedFrom = span > MAX_MONTHLY_SPAN ? subMonths(t, MAX_MONTHLY_SPAN - 1) : f;
   return { fromMonth: month(clampedFrom), toMonth: month(t) };
-}
-
-/** Which preset (if any) a range corresponds to, per view. */
-export function detectPlPreset(
-  view: PlView,
-  from: string,
-  to: string,
-  now = new Date(),
-): PlPreset {
-  const same = (r: PlRange) => r.from === from && r.to === to;
-  if (view === "statement" && same(thisMonth(now))) return "month";
-  if (same(thisYear(now))) return "year";
-  if (view === "monthly" && same(lastTwelveMonths(now))) return "last12";
-  return "custom";
 }
 
 /** "August 2026" for a whole month. */
