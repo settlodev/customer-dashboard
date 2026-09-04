@@ -22,6 +22,17 @@ const quickLinks = [
   { name: "Join Our Team", href: "/careers" },
 ];
 
+// Crawlable links from every page to the keyword landing pages. Without
+// these the pages are orphans — present in the sitemap but with no internal
+// links pointing at them, which is the usual reason such pages never rank.
+const solutionLinks = [
+  { name: "POS System in Tanzania", href: "/pos-system-tanzania" },
+  { name: "Inventory Management", href: "/inventory-management" },
+  { name: "Accounting Software", href: "/accounting-software" },
+  { name: "Empowering SMEs", href: "/empowering-smes" },
+  { name: "Kiswahili", href: "/sw" },
+];
+
 const legalLinks = [
   { name: "Terms of Service", href: "/terms" },
   { name: "FAQ", href: "/#faqs" },
@@ -49,7 +60,7 @@ export const Footer = () => {
   return (
     <footer className="w-full bg-neutral-950 text-neutral-400">
       <div className="max-w-[85rem] mx-auto px-4 py-16 md:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12">
           {/* Brand */}
           <div className="lg:col-span-1 space-y-6">
             <Link href="/" className="inline-flex items-center gap-2">
@@ -78,6 +89,25 @@ export const Footer = () => {
                 </Link>
               ))}
             </div>
+          </div>
+
+          {/* Solutions */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-300">
+              Solutions
+            </h3>
+            <ul className="space-y-3">
+              {solutionLinks.map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className="text-sm text-neutral-500 hover:text-primary transition-colors duration-200"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Company */}

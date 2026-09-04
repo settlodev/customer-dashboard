@@ -8,15 +8,22 @@ import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  organizationSchema,
+  softwareApplicationSchema,
+  websiteSchema,
+} from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.settlo.co.tz"),
   title: {
-    default: "Settlo - Daftari la Kidigitali | POS & Business Management",
+    default:
+      "POS System in Tanzania | Inventory & Accounting Software | Settlo",
     template: "%s | Settlo",
   },
   description:
-    "Tanzania's premier POS and business management platform helping African SMEs streamline their operations with sales tracking, inventory control, payments for retail, restaurant & service businesses.",
+    "Settlo is the all-in-one POS system in Tanzania for retail, restaurant and service businesses — mfumo wa kurekodi mauzo, inventory management, accounting and reports in one place. Free 7-day trial, from TZS 10,000/month.",
   applicationName: "Settlo",
   generator: "Settlo",
   referrer: "origin-when-cross-origin",
@@ -31,29 +38,41 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
     languages: {
+      "en-TZ": "/",
       "sw-TZ": "/sw",
+      "x-default": "/",
     },
   },
   keywords: [
-    "POS Tanzania",
+    // English — head and long-tail terms we target.
+    "POS",
     "POS system",
-    "Mfumo",
-    "Tanzania",
+    "POS Tanzania",
+    "POS system in Tanzania",
+    "best POS system in Tanzania",
+    "point of sale system Tanzania",
+    "inventory management",
+    "inventory management system Tanzania",
+    "stock management software",
+    "accounting systems",
+    "accounting software Tanzania",
     "business management software",
     "retail POS",
-    "restaurant management system",
-    "inventory management",
+    "restaurant POS Tanzania",
+    "empowering SMEs",
+    "SME software Tanzania",
     "sales tracking",
-    "payment solutions Tanzania",
     "business analytics",
-    "omnichannel commerce",
+    "payment solutions Tanzania",
+    // Swahili — how Tanzanian merchants actually search.
+    "mfumo wa kurekodi mauzo",
+    "mfumo wa mauzo",
+    "mfumo wa biashara",
+    "programu ya mauzo",
+    "kudhibiti stoo",
+    "daftari la kidigitali",
+    "kuza biashara",
     "Settlo",
-    "POS",
-    "Best",
-    "Daftari",
-    "Digitali",
-    "Kuza Biashara",
-    "Biashara",
   ],
   itunes: {
     appId: "6740162721",
@@ -134,169 +153,6 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-status-bar-style": "default",
     "msapplication-TileColor": "#EB7F44",
     "msapplication-config": "none",
-
-    "script:ld+json": [
-      {
-        "@context": "https://schema.org",
-        "@type": "MobileApplication",
-        name: "Settlo",
-        operatingSystem: "ANDROID",
-        applicationCategory: "BusinessApplication",
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: "TZS",
-          offerCount: "3",
-          highPrice: "60000",
-          lowPrice: "10000",
-          offers: [
-            {
-              "@type": "Offer",
-              name: "Settlo Silver",
-              price: "10000",
-              priceCurrency: "TZS",
-              itemOffered: {
-                "@type": "Service",
-                name: "Settlo Silver",
-                description:
-                  "Includes: Supplier Management (Unlimited), POS, Reports, Inventory Management (1 - 100 Products), Staff Management (2 Users), Customer Management",
-              },
-              priceSpecification: [
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "10000",
-                  priceCurrency: "TZS",
-                  unitCode: "MON",
-                  name: "Monthly billing",
-                },
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "110000",
-                  priceCurrency: "TZS",
-                  unitCode: "ANN",
-                  name: "Annual billing - Save 1 month",
-                  referenceQuantity: {
-                    "@type": "QuantitativeValue",
-                    value: "12",
-                    unitCode: "MON",
-                  },
-                },
-              ],
-              description: "Perfect for small businesses just getting started",
-            },
-            {
-              "@type": "Offer",
-              name: "Settlo Platinum",
-              price: "25000",
-              priceCurrency: "TZS",
-              itemOffered: {
-                "@type": "Service",
-                name: "Settlo Platinum",
-                description:
-                  "Includes: Supplier Management (Unlimited), POS, Reports, Inventory Management (1 - 1,000 Products), Staff Management (1-10 Users), Customer Management, Recipe Management",
-              },
-              priceSpecification: [
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "25000",
-                  priceCurrency: "TZS",
-                  unitCode: "MON",
-                  name: "Monthly billing",
-                },
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "275000",
-                  priceCurrency: "TZS",
-                  unitCode: "ANN",
-                  name: "Annual billing - Save 1 month",
-                  referenceQuantity: {
-                    "@type": "QuantitativeValue",
-                    value: "12",
-                    unitCode: "MON",
-                  },
-                },
-              ],
-              description: "Most popular - Ideal for growing businesses",
-            },
-            {
-              "@type": "Offer",
-              name: "Settlo Diamond",
-              price: "60000",
-              priceCurrency: "TZS",
-              itemOffered: {
-                "@type": "Service",
-                name: "Settlo Diamond",
-                description:
-                  "Includes: Supplier Management (Unlimited), POS, Reports, Inventory Management (1 - 5,000 Products), Staff Management (1-25 Users), Customer Management, Table Reservation, Kitchen Display, Recipe Management, Room Booking",
-              },
-              priceSpecification: [
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "60000",
-                  priceCurrency: "TZS",
-                  unitCode: "MON",
-                  name: "Monthly billing",
-                },
-                {
-                  "@type": "UnitPriceSpecification",
-                  price: "660000",
-                  priceCurrency: "TZS",
-                  unitCode: "ANN",
-                  name: "Annual billing - Save 1 month",
-                  referenceQuantity: {
-                    "@type": "QuantitativeValue",
-                    value: "12",
-                    unitCode: "MON",
-                  },
-                },
-              ],
-              description: "Premium features for established businesses",
-            },
-          ],
-        },
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: "4.5",
-          ratingCount: "1000",
-        },
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "Settlo",
-        url: "https://settlo.co.tz",
-        logo: "https://www.settlo.co.tz/images/logo_badge.png",
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: "Victoria Noble Centre",
-          addressLocality: "Bagamoyo Rd",
-          addressRegion: "Dar es Salaam",
-          postalCode: "0255",
-          addressCountry: "TZ",
-        },
-        contactPoint: {
-          "@type": "ContactPoint",
-          telephone: "+255759229777",
-          contactType: "customer service",
-          areaServed: "TZ",
-          availableLanguage: ["en", "sw"],
-        },
-        sameAs: [
-          "https://facebook.com/settlo",
-          "https://twitter.com/settlo",
-          "https://linkedin.com/company/settlo",
-          "https://instagram.com/settlo",
-        ],
-        openingHours: "Mo,Tu,We,Th,Fr 09:00-17:00",
-        location: {
-          "@type": "Place",
-          geo: {
-            "@type": "GeoCoordinates",
-            latitude: "-6.7793289",
-            longitude: "39.2516968",
-          },
-        },
-      },
-    ].map((schema) => JSON.stringify(schema)),
   },
 };
 
@@ -342,6 +198,13 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>
+        <JsonLd
+          schema={[
+            organizationSchema,
+            websiteSchema,
+            softwareApplicationSchema,
+          ]}
+        />
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>

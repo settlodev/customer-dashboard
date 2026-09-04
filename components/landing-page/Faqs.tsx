@@ -2,34 +2,12 @@
 
 import React, { useState } from 'react';
 import { Plus, Minus } from 'lucide-react';
+import { HOME_FAQS } from '@/lib/content/faqs';
+import type { Faq } from '@/lib/seo/structured-data';
 
-interface FAQItem {
-    question: string;
-    answer: string;
-}
+type FAQItem = Faq;
 
-const questions: FAQItem[] = [
-    {
-        question: "What is Settlo?",
-        answer: "Settlo is an all-in-one business platform that combines point-of-sale, inventory management, and flexible business funding. It's built for businesses that need to sell, track stock, and manage operations from one place instead of stitching together separate tools."
-    },
-    {
-        question: "How does Settlo work?",
-        answer: "You sign up for a free 7-day trial (no credit card required), set up your business and locations, and start selling through the POS. Sales, stock levels, and staff activity sync in real time, so your inventory, reports, and cash flow always reflect what's actually happening in-store."
-    },
-    {
-        question: "What features does Settlo offer?",
-        answer: "Settlo covers point-of-sale and checkout, real-time inventory across multiple locations, procurement (RFQs, purchase orders, and goods receiving), full accounting (ledger, invoicing, and financial reports), sales and performance analytics, customer profiles and loyalty, and access to business funding — all in one platform."
-    },
-    {
-        question: "What payment methods does Settlo support?",
-        answer: "At checkout, Settlo accepts cash, card, and mobile money. For invoice and subscription payments, we support Airtel Money, Mixx by Yas, and Vodacom M-Pesa."
-    },
-    {
-        question: "Can I use Settlo for my business?",
-        answer: "Yes — Settlo scales from a single store to multiple locations and warehouses, with plans to match each stage. Start with a free 7-day trial, no credit card required, and cancel anytime."
-    },
-];
+const questions: FAQItem[] = HOME_FAQS;
 
 const AccordionItem: React.FC<{
     item: FAQItem;

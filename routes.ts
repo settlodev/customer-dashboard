@@ -4,6 +4,14 @@ export const publicRoutes = [
   "/terms",
   "/contact-us",
   "/careers",
+  // Public SEO landing pages. Exact-match entries — "/inventory-management"
+  // does not widen the protected "/inventory" prefix (see the invariant
+  // check below, which asserts exactly that).
+  "/pos-system-tanzania",
+  "/inventory-management",
+  "/accounting-software",
+  "/empowering-smes",
+  "/sw",
   "/robots.txt",
   "/sitemap.xml",
   "/menu/[id]",

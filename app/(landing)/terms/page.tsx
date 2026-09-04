@@ -1,4 +1,14 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "The terms and conditions governing use of Settlo's POS, inventory management and accounting services.",
+  // Without an explicit canonical this page inherits the root layout's
+  // `canonical: "/"` and tells Google it is a duplicate of the homepage.
+  alternates: { canonical: "/terms" },
+};
 
 const sections = [
   {

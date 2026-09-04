@@ -3,7 +3,10 @@ import ContactUsForm from "@/components/forms/contact_us_form";
 
 export const metadata: Metadata = {
     title: "Contact Us",
-    description: "Get in touch with our support team. We're here to help with any questions or inquiries.",
+    description: "Talk to the Settlo team in Dar es Salaam about POS, inventory management and accounting for your business. Support in English and Kiswahili by phone, email and WhatsApp.",
+    // Without an explicit canonical this page inherits the root layout's
+    // `canonical: "/"` and tells Google it is a duplicate of the homepage.
+    alternates: { canonical: "/contact-us" },
 };
 
 export default function ContactPage() {

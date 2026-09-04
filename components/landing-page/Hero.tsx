@@ -32,7 +32,7 @@ export const Hero = () => {
             <div className="relative lg:hidden">
               <Image
                 src="/images/11.png"
-                alt="Settlo POS Interface"
+                alt="Settlo POS system running on a tablet, showing the sales checkout screen"
                 width={600}
                 height={400}
                 className="w-full h-auto drop-shadow-xl"
@@ -43,20 +43,21 @@ export const Hero = () => {
             {/* Text Content */}
             <div className="space-y-6 md:space-y-8">
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] tracking-tight text-gray-900 dark:text-gray-100">
-                Run your entire business smarter&mdash;{" "}
+                Run your entire business smarter with the{" "}
                 <span className="bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent">
-                  All in one POS
+                  all-in-one POS system in Tanzania
                 </span>
               </h1>
 
               <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-xl">
                 Save time, cut costs and eliminate guesswork with an efficient
-                platform built for modern businesses.
+                platform built for modern businesses across Tanzania.
                 <br />
                 <br />
-                Settlo combines market-leading inventory management, a seamless
-                point-of-sale system and flexible access business funding&mdash;
-                all in one place. <br />
+                Settlo combines market-leading inventory management, accounting,
+                a seamless point-of-sale system and flexible access to business
+                funding&mdash; all in one place. Mfumo wa kurekodi mauzo,
+                kudhibiti stoo na hesabu za biashara yako. <br />
                 <span className="font-semibold text-primary">
                   Kesho yako ni kubwa.
                 </span>
@@ -96,7 +97,7 @@ export const Hero = () => {
             <div className="relative hidden lg:block">
               <Image
                 src="/images/11.png"
-                alt="Settlo POS Interface"
+                alt="Settlo POS system running on a tablet, showing the sales checkout screen"
                 width={600}
                 height={400}
                 className="w-full h-auto drop-shadow-xl"
