@@ -5,6 +5,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, CheckIcon, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  featureKeyOf,
+  formatFeatureLabel,
+  type RawPackageFeature,
+} from "@/lib/billing/feature-label";
 
 interface PricingCardProps {
   plan: Package;
@@ -42,26 +47,15 @@ export const PricingCard: React.FC<PricingCardProps> = ({
     router.push(`/register?package=${plan.id}`);
   };
 
-  const includedFeatures = (plan.features ?? []).filter(
-    (f: any) => f.isIncluded,
+  const includedFeatures: RawPackageFeature[] = (plan.features ?? []).filter(
+    (f: RawPackageFeature) => f.isIncluded,
   );
   const previewFeatures = includedFeatures.slice(0, FEATURE_PREVIEW_COUNT);
   const extraFeatures = includedFeatures.slice(FEATURE_PREVIEW_COUNT);
 
-  const formatFeatureLabel = (f: any) => {
-    const name = f.feature?.name ?? "";
-    const value = f.featureValue;
-
-    if (value === "true" || value === "false") return name;
-    if (value === "-1") return `Unlimited ${name.replace(" Limit", "")}`;
-    if (f.feature?.featureType === "LIMIT") return `${name}: ${value}`;
-
-    return name;
-  };
-
-  const renderFeatureItem = (f: any, i: number) => (
+  const renderFeatureItem = (f: RawPackageFeature, i: number) => (
     <li
-      key={f.feature?.id ?? i}
+      key={featureKeyOf(f, i)}
       className={`flex items-start gap-2 text-sm ${
         isPopular ? "text-gray-200" : "text-gray-700 dark:text-gray-300"
       }`}
@@ -75,24 +69,29 @@ export const PricingCard: React.FC<PricingCardProps> = ({
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={`relative flex flex-col rounded-2xl p-6 ${
+      className={`relative flex h-full flex-col rounded-2xl p-6 ${
         isPopular
           ? "bg-gray-900 text-white shadow-2xl ring-1 ring-primary/40"
           : "bg-card border border-border hover:shadow-lg"
       }`}
     >
       {isPopular && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2"
-        >
-          <span className="inline-flex items-center gap-1.5 bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-md">
+        // Centred with flex, not `left-1/2 -translate-x-1/2`: Framer writes the
+        // animated `y` into the element's own `transform`, which overrides the
+        // Tailwind translate class and left the pill sitting at the 50% mark
+        // instead of straddling it. Keeping the animation on an inner element
+        // leaves the centring untouched.
+        <div className="absolute -top-3.5 inset-x-0 flex justify-center pointer-events-none">
+          <motion.span
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center gap-1.5 bg-primary text-white px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-md"
+          >
             <Sparkles className="w-3.5 h-3.5" />
             Most Popular
-          </span>
-        </motion.div>
+          </motion.span>
+        </div>
       )}
 
       <div className="mb-8">
@@ -146,7 +145,12 @@ export const PricingCard: React.FC<PricingCardProps> = ({
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 className="overflow-hidden"
               >
-                <ul className="space-y-2.5 pt-2.5 max-h-40 overflow-y-auto pr-1">
+                {/* No inner max-height/scroll here: a nested scroll area inside
+                    a height-animating container fought the page scroll (the
+                    wheel would trap, then jump once the list hit its cap).
+                    The card simply grows instead — the grid is items-stretch,
+                    so its neighbours keep pace. */}
+                <ul className="space-y-2.5 pt-2.5">
                   {extraFeatures.map((f, i) =>
                     renderFeatureItem(f, i + FEATURE_PREVIEW_COUNT),
                   )}

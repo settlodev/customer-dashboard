@@ -21,6 +21,14 @@ const EXCLUDED_CODES: Partial<Record<EntityType, string[]>> = {
   LOCATION: ["BASIC"],
 };
 
+/**
+ * Annualised price, matching what PricingCard displays (it renders a /year
+ * figure, multiplying up when the package bills monthly). Sorting on the raw
+ * `basePrice` would interleave monthly and yearly packages.
+ */
+export const annualisedPrice = (p: Package): number =>
+  p.billingInterval === "YEARLY" ? p.basePrice : p.basePrice * 12;
+
 export const Pricing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<EntityType>("LOCATION");
   const [packagesByType, setPackagesByType] = useState<
@@ -39,9 +47,15 @@ export const Pricing: React.FC = () => {
       const excludedCodes = EXCLUDED_CODES[type] ?? [];
       setPackagesByType((prev) => ({
         ...prev,
-        [type]: data.filter(
-          (p) => p.isActive && !excludedCodes.some((code) => p.code?.includes(code)),
-        ),
+        // Cheapest first, so the cards read left-to-right by price. The API
+        // returns catalogue order, which is not price order — most visibly on
+        // the Location tab, where dropping BASIC leaves the rest arbitrary.
+        [type]: data
+          .filter(
+            (p) =>
+              p.isActive && !excludedCodes.some((code) => p.code?.includes(code)),
+          )
+          .sort((a, b) => annualisedPrice(a) - annualisedPrice(b)),
       }));
       setStatus((prev) => ({ ...prev, [type]: "idle" }));
     } catch (error) {
@@ -128,7 +142,7 @@ export const Pricing: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 max-w-5xl mx-auto min-h-[24rem] items-start"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 max-w-5xl mx-auto min-h-[24rem] items-stretch"
           >
             {loading &&
               Array.from({ length: 3 }).map((_, i) => (
@@ -145,6 +159,7 @@ export const Pricing: React.FC = () => {
                 return (
                   <motion.div
                     key={plan.id}
+                    className="h-full"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
