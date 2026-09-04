@@ -3,7 +3,10 @@ import { AlertTriangle } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { PrintableDocument } from "@/components/documents";
-import { VfdReceiptSheet } from "@/components/widgets/orders/vfd-receipt-sheet";
+import {
+  VfdReceiptSheet,
+  orderToVfdSubject,
+} from "@/components/widgets/orders/vfd-receipt-sheet";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getOrderDetail, getVfdReceipt } from "@/lib/actions/order-actions";
 
@@ -57,7 +60,11 @@ export default async function OrderVfdReceiptPage({
       documentTitle={`${order.orderNumber} - Tax Receipt`}
       autoPrint
     >
-      <VfdReceiptSheet order={order} vfd={vfd} currency={currency} />
+      <VfdReceiptSheet
+        subject={orderToVfdSubject(order)}
+        vfd={vfd}
+        currency={currency}
+      />
     </PrintableDocument>
   );
 }

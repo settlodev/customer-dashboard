@@ -3,7 +3,13 @@
  * `PrintableDocument`'s children slot (same toolbar + A4 sheet + print
  * stylesheet as the Close-of-Day report / GRN delivery note). Server
  * component: no hooks, all data comes in as props from the printable
- * route (`app/(printables)/orders/[id]/vfd/page.tsx`).
+ * routes (`app/(printables)/orders/[id]/vfd/page.tsx` and
+ * `app/(printables)/invoices/[id]/vfd/page.tsx`).
+ *
+ * The fiscal payload is the same for an order and an invoice; only the
+ * SUBJECT differs (what was sold, to whom, paid how). `VfdReceiptSubject`
+ * is that neutral shape — build it with `orderToVfdSubject` /
+ * `invoiceToVfdSubject`.
  *
  * Money and dates reuse the same "formal printed report" helpers as the
  * Close-of-Day report (`lib/day-sessions/cod-format.ts`) — bare grouped
@@ -20,7 +26,50 @@ import {
   fmtDateTimeShort,
 } from "@/lib/day-sessions/cod-format";
 import { VfdReceiptQr } from "./vfd-receipt-qr";
-import type { OrderDetail, VfdPrintResponse } from "@/types/orders/type";
+import type {
+  OrderDetail,
+  VfdPrintResponse,
+  VfdReceiptDetail,
+} from "@/types/orders/type";
+import type {
+  Invoice,
+  InvoicePayment,
+  InvoiceVfdPrintResponse,
+} from "@/types/invoicing/type";
+
+/** What the receipt is FOR, independent of whether it was an order or an invoice. */
+export interface VfdReceiptSubject {
+  /** e.g. "Order #" / "Invoice" */
+  numberLabel: string;
+  number: string;
+  businessDate?: string | null;
+  /** When the sale closed / the invoice was issued. */
+  closedAt?: string | null;
+  closedLabel: string;
+  servedBy?: string | null;
+  customer?: { name?: string | null; phone?: string | null } | null;
+  items: Array<{
+    id: string;
+    name: string;
+    quantity?: number | null;
+    unitPrice?: number | null;
+    amount?: number | null;
+  }>;
+  payments: Array<{
+    id: string;
+    method?: string | null;
+    amount?: number | null;
+    at?: string | null;
+  }>;
+}
+
+/** The fiscal half, common to `VfdPrintResponse` (orders) and `InvoiceVfdPrintResponse`. */
+export interface VfdReceiptPayload {
+  fiscalReceiptNumber: string | null;
+  signedAt: string | null;
+  verificationUrl: string | null;
+  receipt?: VfdReceiptDetail | null;
+}
 
 const TH =
   "border-b border-slate-200 bg-slate-100 px-3 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 whitespace-nowrap";
@@ -65,13 +114,81 @@ function Section({
   );
 }
 
+export function orderToVfdSubject(order: OrderDetail): VfdReceiptSubject {
+  const confirmedPayments = (order.transactions ?? []).filter((t) =>
+    CONFIRMED_TX_STATUSES.has((t.status ?? "").toUpperCase()),
+  );
+  return {
+    numberLabel: "Order #",
+    number: order.orderNumber,
+    businessDate: order.businessDate,
+    closedAt: order.closedDate,
+    closedLabel: "Closed",
+    servedBy:
+      order.finishedBy?.name ?? order.assignedTo?.name ?? order.startedBy?.name,
+    customer: order.customer?.name
+      ? { name: order.customer.name, phone: order.customer.phone }
+      : null,
+    items: (order.items ?? []).map((item) => ({
+      id: String(item.id),
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      amount: item.netAmount,
+    })),
+    payments: confirmedPayments.map((t) => ({
+      id: String(t.id),
+      method: t.paymentMethodName,
+      amount: t.amount,
+      at: t.createdAt,
+    })),
+  };
+}
+
+const humanise = (code?: string | null) => {
+  const raw = code?.trim();
+  if (!raw) return null;
+  const words = raw.replace(/[-_]+/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+export function invoiceToVfdSubject(
+  invoice: Invoice,
+  payments: InvoicePayment[],
+): VfdReceiptSubject {
+  return {
+    numberLabel: "Invoice",
+    number: invoice.invoiceNumber,
+    businessDate: invoice.businessDate ?? invoice.issueDate,
+    closedAt: invoice.issueDate,
+    closedLabel: "Issued",
+    servedBy: null,
+    customer: invoice.customerName
+      ? { name: invoice.customerName, phone: invoice.customerPhone }
+      : null,
+    items: (invoice.lines ?? []).map((l) => ({
+      id: l.id,
+      name: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      amount: l.lineTotal,
+    })),
+    payments: payments.map((p) => ({
+      id: p.id,
+      method: humanise(p.paymentMethodCode ?? p.paymentMethod),
+      amount: p.amount,
+      at: p.paymentDate,
+    })),
+  };
+}
+
 export function VfdReceiptSheet({
-  order,
+  subject,
   vfd,
   currency,
 }: {
-  order: OrderDetail;
-  vfd: VfdPrintResponse;
+  subject: VfdReceiptSubject;
+  vfd: VfdPrintResponse | InvoiceVfdPrintResponse | VfdReceiptPayload;
   currency: string;
 }) {
   const receipt = vfd.receipt ?? null;
@@ -91,12 +208,8 @@ export function VfdReceiptSheet({
   const mobile = clientInfo?.mobile ?? vfdInfo?.mobile ?? null;
   const vrnDisplay = vfdInfo?.vrn ? vfdInfo.vrn : "NOT REGISTERED";
 
-  const servedBy =
-    order.finishedBy?.name ?? order.assignedTo?.name ?? order.startedBy?.name;
-
-  const confirmedPayments = (order.transactions ?? []).filter((t) =>
-    CONFIRMED_TX_STATUSES.has((t.status ?? "").toUpperCase()),
-  );
+  const servedBy = subject.servedBy;
+  const confirmedPayments = subject.payments;
 
   const verificationUrl = data?.traReceiptVerificationUrl ?? vfd.verificationUrl;
   const verificationCode = data?.traReceiptVerificationCode;
@@ -134,19 +247,19 @@ export function VfdReceiptSheet({
         </div>
       </header>
 
-      {/* ── Order meta ─────────────────────────────────────────────── */}
+      {/* ── Subject meta ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-8 px-10 py-5 sm:grid-cols-2">
         <div>
-          <Kv k="Order #" v={order.orderNumber} />
-          <Kv k="Business date" v={fmtBusinessDate(order.businessDate)} />
-          <Kv k="Closed" v={fmtDateTimeShort(order.closedDate)} />
+          <Kv k={subject.numberLabel} v={subject.number} />
+          <Kv k="Business date" v={fmtBusinessDate(subject.businessDate)} />
+          <Kv k={subject.closedLabel} v={fmtDateTimeShort(subject.closedAt)} />
           {servedBy && <Kv k="Served by" v={servedBy} />}
         </div>
-        {order.customer?.name && (
+        {subject.customer?.name && (
           <div>
-            <Kv k="Customer" v={order.customer.name} />
-            {order.customer.phone && (
-              <Kv k="Phone" v={order.customer.phone} />
+            <Kv k="Customer" v={subject.customer.name} />
+            {subject.customer.phone && (
+              <Kv k="Phone" v={subject.customer.phone} />
             )}
           </div>
         )}
@@ -164,12 +277,12 @@ export function VfdReceiptSheet({
             </tr>
           </thead>
           <tbody>
-            {(order.items ?? []).map((item) => (
-              <tr key={item.id as string}>
+            {subject.items.map((item) => (
+              <tr key={item.id}>
                 <td className={TD}>{item.name}</td>
                 <td className={cn(TD, NUM)}>{qtyFmt(item.quantity)}</td>
                 <td className={cn(TD, NUM)}>{fmt2(item.unitPrice)}</td>
-                <td className={cn(TD, NUM)}>{fmt2(item.netAmount)}</td>
+                <td className={cn(TD, NUM)}>{fmt2(item.amount)}</td>
               </tr>
             ))}
           </tbody>
@@ -238,10 +351,10 @@ export function VfdReceiptSheet({
             </thead>
             <tbody>
               {confirmedPayments.map((t) => (
-                <tr key={t.id as string}>
-                  <td className={TD}>{t.paymentMethodName ?? "—"}</td>
+                <tr key={t.id}>
+                  <td className={TD}>{t.method ?? "—"}</td>
                   <td className={cn(TD, NUM)}>{fmt2(t.amount)}</td>
-                  <td className={cn(TD, NUM)}>{fmtDateTimeShort(t.createdAt)}</td>
+                  <td className={cn(TD, NUM)}>{fmtDateTimeShort(t.at)}</td>
                 </tr>
               ))}
             </tbody>

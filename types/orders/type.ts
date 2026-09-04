@@ -398,6 +398,16 @@ export interface PublicInvoice {
   locationName: string;
   locationAddress: string;
   locationPhone: string;
+  // Issuer letterhead (resolved server-side, location-first / business
+  // fallback) — same block the Accounting invoice documents carry.
+  issuerEmail?: string | null;
+  issuerTin?: string | null;
+  issuerVrn?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
 
   orderNumber: string;
   orderStatus: string | null;

@@ -10,6 +10,7 @@ import type {
 } from "@/components/documents";
 import { getPublicInvoice } from "@/lib/actions/order-actions";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 
 type Params = Promise<{ token: string }>;
 
@@ -75,10 +76,30 @@ export default async function SharedInvoicePage({
   };
   const documentTitle = buildPageTitle(invoice.locationName);
 
+  // Same letterhead block as the Accounting invoice documents: the business
+  // is the name, the branch (when it differs) leads the address, then the
+  // street lines and "City, Region, Country".
+  const businessName = invoice.businessName?.trim() || "";
+  const locationName = invoice.locationName?.trim() || "";
+  const addressLines: string[] = [];
+  if (locationName && locationName !== businessName) addressLines.push(locationName);
+  addressLines.push(...composeAddress(invoice.locationAddress));
+  const locale = [invoice.locationCity, invoice.locationRegion, invoice.issuerCountry]
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(", ");
+  if (locale) addressLines.push(locale);
+  const logo = invoice.issuerLogoUrl?.trim() || undefined;
+
   const issuer: BusinessIdentity = {
-    name: invoice.businessName?.trim() || invoice.locationName || "Business",
-    addressLines: composeAddress(invoice.locationAddress),
+    name: businessName || locationName || "Business",
+    logoUrl: isDisplayableImageUrl(logo) ? logo : undefined,
+    addressLines,
     phone: invoice.locationPhone || undefined,
+    email: invoice.issuerEmail?.trim() || undefined,
+    website: invoice.issuerWebsite?.trim() || undefined,
+    tin: invoice.issuerTin?.trim() || undefined,
+    vrn: invoice.issuerVrn?.trim() || undefined,
   };
 
   const recipient: Party | undefined = invoice.customerName
@@ -128,7 +149,7 @@ export default async function SharedInvoicePage({
     items,
     totals: {
       subtotal,
-      taxes: taxAmount > 0 ? [{ label: "Tax", rate: 0, amount: taxAmount }] : undefined,
+      taxes: taxAmount > 0 ? [{ label: "Tax", amount: taxAmount }] : undefined,
       discount: discountAmount > 0
         ? { label: "Discount", amount: discountAmount }
         : undefined,

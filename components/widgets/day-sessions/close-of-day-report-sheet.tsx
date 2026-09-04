@@ -14,6 +14,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { composeLetterheadAddress } from "@/lib/grn-document";
+import { isDisplayableImageUrl } from "@/lib/image-url";
 import { DocumentHeader } from "@/components/documents/sections/DocumentHeader";
 import { NotesFooter } from "@/components/documents/sections/NotesFooter";
 import type { BusinessIdentity, DocumentMeta } from "@/components/documents/types";
@@ -129,7 +130,10 @@ export function CloseOfDayReportSheet({
   // Shared-document letterhead (identical component to GRN / proforma).
   const issuer: BusinessIdentity = {
     name: businessName,
-    logoUrl: lh?.logoUrl ?? undefined,
+    // Migrated tenants can still hold a logo URL on a retired upload host;
+    // handing that to next/image costs a doomed round-trip and prints a
+    // broken box at the top of a filed document.
+    logoUrl: isDisplayableImageUrl(lh?.logoUrl) ? lh.logoUrl : undefined,
     addressLines: composeLetterheadAddress(lh),
     phone: lh?.phone ?? undefined,
     email: lh?.email ?? undefined,

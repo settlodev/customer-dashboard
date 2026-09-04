@@ -1,3 +1,4 @@
+import { FileDown } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import {
@@ -6,11 +7,14 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
+import { Button } from "@/components/ui/button";
 import { getAccountingLocationSettings } from "@/lib/actions/accounting-location-settings-actions";
 import {
   getProforma,
   getProformaTimeline,
 } from "@/lib/actions/invoicing-proforma-actions";
+import { getLetterhead } from "@/lib/actions/letterhead-actions";
+import { buildProformaDocument } from "@/lib/invoicing-document";
 import {
   PROFORMA_STATUS_LABELS,
   PROFORMA_STATUS_TONES,
@@ -71,7 +75,14 @@ export default async function ProformaDetailPage({
   const proforma = await getProforma(id);
   if (!proforma) notFound();
 
-  const timeline = await getProformaTimeline(proforma.id);
+  const [timeline, letterhead] = await Promise.all([
+    getProformaTimeline(proforma.id),
+    getLetterhead(),
+  ]);
+  // Same branded document as the customer link and "Download PDF". A live
+  // quote takes the current letterhead; once converted the issuer block
+  // frozen on the proforma wins, so the screen shows what was accepted.
+  const document = buildProformaDocument(proforma, letterhead);
 
   return (
     <PageShell>
@@ -91,9 +102,25 @@ export default async function ProformaDetailPage({
             {PROFORMA_STATUS_LABELS[proforma.status]}
           </span>
         }
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={`/proforma-invoices/${proforma.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <FileDown className="mr-1.5 h-4 w-4" />
+              Download PDF
+            </a>
+          </Button>
+        }
       />
       <PageBody>
-        <ProformaDetailClient proforma={proforma} timeline={timeline} />
+        <ProformaDetailClient
+          proforma={proforma}
+          timeline={timeline}
+          document={document}
+        />
       </PageBody>
     </PageShell>
   );

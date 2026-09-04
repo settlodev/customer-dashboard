@@ -136,17 +136,23 @@ export interface ControlInputProps
   suffix?: React.ReactNode;
   /** Tabular-mono font for numeric inputs. */
   mono?: boolean;
+  /** 36px box instead of the default 44px — for toolbars and nav filters. */
+  compact?: boolean;
 }
 
 export const ControlInput = React.forwardRef<HTMLInputElement, ControlInputProps>(
   function ControlInput(
-    { prefix, suffix, mono, className, disabled, ...props },
+    { prefix, suffix, mono, compact, className, disabled, ...props },
     ref,
   ) {
     return (
       <div
         data-disabled={disabled ? "" : undefined}
-        className={cn(controlBoxClass, suffix ? "pr-0" : "")}
+        className={cn(
+          controlBoxClass,
+          suffix ? "pr-0" : "",
+          compact && "h-9 gap-2 px-2.5",
+        )}
       >
         {prefix && (
           <span className="grid shrink-0 place-items-center text-muted-2">
