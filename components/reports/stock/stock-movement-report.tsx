@@ -97,7 +97,6 @@ interface Props {
   /** URL state (all filtering happens server-side). */
   from: string;
   to: string;
-  asOf: string;
   search: string;
   /** Active stock-category id, or "" for every category. */
   categoryId: string;
@@ -124,7 +123,6 @@ export function StockMovementReport({
   closingSub,
   from,
   to,
-  asOf,
   search,
   categoryId,
   categories,
@@ -311,7 +309,6 @@ export function StockMovementReport({
             <StockMovementExportButton
               from={from}
               to={to}
-              asOf={asOf}
               search={search}
               categoryId={categoryId}
               lens={lens}

@@ -191,6 +191,14 @@ export interface Order {
    * the order has none. See {@link orderRefundBadge}.
    */
   refundedAmount: number | null;
+  /**
+   * Display name of {@link customerId}, resolved by the OMS from its customer
+   * reference mirror on the list projection (`GET /orders/search`) so the
+   * orders table can show who an order was for without a per-row customer
+   * fetch. Null for walk-in orders (most of them); absent on the full
+   * `GET /orders/{id}` response, which carries the customer under `customer`.
+   */
+  customerName?: string | null;
 
   ticketsCount: number | null;
   billCount: number | null;

@@ -45,7 +45,7 @@ export function AbandonedDataTable({
       pageCount={pageCount}
       pageNo={pageNo}
       searchKey="orderNumber"
-      searchPlaceholder="Search name, order #, table, staff…"
+      searchPlaceholder="Search name, customer, order #, table, staff…"
       total={total}
       rowClickBasePath="/orders"
       disableArchive
