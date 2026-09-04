@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { PricingCard } from "@/components/landing-page/PricingCard";
+import { planTier, type PlanTier } from "@/lib/billing/plan-tier";
 
 type EntityType = "LOCATION" | "STORE" | "WAREHOUSE";
 type TabStatus = "idle" | "loading" | "error";
@@ -16,8 +17,11 @@ const TABS: { label: string; value: EntityType }[] = [
   { label: "Warehouse", value: "WAREHOUSE" },
 ];
 
-// Plans to exclude per entity type, e.g. Basic isn't offered for Location
-const EXCLUDED_CODES: Partial<Record<EntityType, string[]>> = {
+// Plans to exclude per entity type, e.g. Basic isn't offered for Location.
+// Keyed by tier derived from the package name — the packages endpoint returns
+// no `code`, so the previous `p.code?.includes("BASIC")` test never matched
+// and BASIC was in fact still being listed under Location.
+const EXCLUDED_TIERS: Partial<Record<EntityType, PlanTier[]>> = {
   LOCATION: ["BASIC"],
 };
 
@@ -44,17 +48,19 @@ export const Pricing: React.FC = () => {
     setStatus((prev) => ({ ...prev, [type]: "loading" }));
     try {
       const data = await getPackages(type);
-      const excludedCodes = EXCLUDED_CODES[type] ?? [];
+      const excludedTiers = EXCLUDED_TIERS[type] ?? [];
       setPackagesByType((prev) => ({
         ...prev,
         // Cheapest first, so the cards read left-to-right by price. The API
         // returns catalogue order, which is not price order — most visibly on
         // the Location tab, where dropping BASIC leaves the rest arbitrary.
         [type]: data
-          .filter(
-            (p) =>
-              p.isActive && !excludedCodes.some((code) => p.code?.includes(code)),
-          )
+          .filter((p) => {
+            if (!p.isActive) return false;
+            const tier = planTier(p);
+            // An unrecognised tier (new or renamed plan) is kept, not hidden.
+            return tier === null || !excludedTiers.includes(tier);
+          })
           .sort((a, b) => annualisedPrice(a) - annualisedPrice(b)),
       }));
       setStatus((prev) => ({ ...prev, [type]: "idle" }));
@@ -155,7 +161,7 @@ export const Pricing: React.FC = () => {
             {!loading &&
               !hasError &&
               packages.map((plan, index) => {
-                const isPopular = plan.code?.includes("PROFESSIONAL");
+                const isPopular = planTier(plan) === "PROFESSIONAL";
                 return (
                   <motion.div
                     key={plan.id}

@@ -9,6 +9,15 @@ export type FeatureType = "CORE" | "ADVANCED" | "PREMIUM" | "LIMIT";
 export interface Package {
   features: any[];
   id: string;
+  /**
+   * NOT returned by GET /api/v1/packages — the billing service's
+   * PackageResponse has no `code` field and the catalogue identifies plans by
+   * `name` only ('SETTLO BASIC' … 'SETTLO ENTERPRISE'). Reading it always
+   * yields undefined, which silently disabled the landing page's popular-plan
+   * badge and its per-entity plan exclusions. Use planTier() from
+   * lib/billing/plan-tier.ts instead. Retained only for the admin/subscription
+   * call sites that still reference it.
+   */
   code?: string;
   name: string;
   description: string | null;
