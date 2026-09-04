@@ -228,12 +228,20 @@ export interface InvoiceParty {
   email?: string;
 }
 
-// Fixed seller identity printed on every subscription invoice — Settlo is the
-// merchant of record for SaaS billing, regardless of which whitelabel ran the
-// transaction.
+// Fixed seller identity for subscription invoices — Settlo is the merchant of
+// record for SaaS billing, regardless of which whitelabel ran the transaction.
+//
+// Nothing imports this yet; it is kept as the single place the seller address
+// is defined so a future invoice renderer has one source rather than inlining
+// its own copy. Address lines follow the same order buildBillToParty() uses
+// below (street, then locality, then country) and must match the address shown
+// on the public site — footer, location section, contact page and the
+// Organization schema in lib/seo/structured-data.ts.
 export const SETTLO_SELLER: InvoiceParty = {
   name: "Settlo Technologies Limited",
   addressLines: [
+    "5th Floor, Auditax International",
+    "Coca-Cola Road, Mikocheni",
     "P.O. Box 8059",
     "Dar Es Salaam",
     "United Republic of Tanzania",
