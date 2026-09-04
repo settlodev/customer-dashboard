@@ -21,7 +21,6 @@ const PAGE_SIZES = [15, 25, 50];
 
 type Params = {
   searchParams: Promise<{
-    asOf?: string;
     from?: string;
     to?: string;
     page?: string;
@@ -39,7 +38,8 @@ type Params = {
  * All filtering / search / sort / pagination happens on the Inventory Service
  * now: this page reads the URL query, fetches a single page + the KPI summary,
  * and hands them to the client table (which just navigates the URL). Default
- * window is the current month (overridable), Closing follows the "as of" date.
+ * window is the current month (overridable): Opening is the balance at the
+ * start of the window, Closing the balance at its end.
  */
 export default async function StockReportPage({ searchParams }: Params) {
   const resolved = await searchParams;
@@ -47,7 +47,6 @@ export default async function StockReportPage({ searchParams }: Params) {
 
   const now = new Date();
   const today = format(now, "yyyy-MM-dd");
-  const asOf = resolved.asOf ?? today;
   const month = thisMonthRange(now);
   const from = resolved.from ?? month.from;
   const to = resolved.to ?? month.to;
@@ -69,7 +68,6 @@ export default async function StockReportPage({ searchParams }: Params) {
     getStockMovementReport({
       from,
       to,
-      asOf,
       page: page - 1,
       size: limit,
       search: search || undefined,
@@ -84,10 +82,10 @@ export default async function StockReportPage({ searchParams }: Params) {
       ? format(new Date(from), "MMM d, yyyy")
       : `${format(new Date(from), "MMM d")} – ${format(new Date(to), "MMM d, yyyy")}`;
 
+  // Closing is the balance at the end of the window. A window running up to
+  // today closes on the live balance, since today has no snapshot yet.
   const closingSub =
-    asOf >= today
-      ? "on hand now"
-      : `as of ${format(new Date(asOf), "MMM d, yyyy")}`;
+    to >= today ? "on hand now" : `as of ${format(new Date(to), "MMM d, yyyy")}`;
 
   // Genuinely empty (no data at all), not just a filtered-out search/category/lens.
   const noData =
@@ -101,7 +99,7 @@ export default async function StockReportPage({ searchParams }: Params) {
       <PageHeader
         title="Stock report"
         subtitle={`Movement · ${rangeLabel}`}
-        actions={<StockReportDateFilter asOf={asOf} from={from} to={to} />}
+        actions={<StockReportDateFilter from={from} to={to} />}
       />
 
       <PageBody>
@@ -115,7 +113,6 @@ export default async function StockReportPage({ searchParams }: Params) {
             closingSub={closingSub}
             from={from}
             to={to}
-            asOf={asOf}
             search={search}
             categoryId={categoryId ?? ""}
             categories={categories}

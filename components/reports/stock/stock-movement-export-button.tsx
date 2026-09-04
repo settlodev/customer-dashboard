@@ -28,7 +28,6 @@ const STATUS_TEXT: Record<StockStatus, string> = {
 interface Props {
   from: string;
   to: string;
-  asOf: string;
   search: string;
   /** Active stock-category id, or "" for every category. */
   categoryId: string;
@@ -47,7 +46,6 @@ interface Props {
 export function StockMovementExportButton({
   from,
   to,
-  asOf,
   search,
   categoryId,
   lens,
@@ -63,8 +61,7 @@ export function StockMovementExportButton({
         const report = await getStockMovementReport({
           from,
           to,
-          asOf,
-          page: 0,
+                  page: 0,
           size: 10000,
           search: search || undefined,
           categoryId: categoryId || undefined,

@@ -13,7 +13,6 @@ import type {
 interface StockMovementQuery {
   from: string;
   to: string;
-  asOf: string;
   /** 0-based page. */
   page: number;
   size: number;
@@ -73,7 +72,6 @@ export async function getStockMovementReport(
     const params = new URLSearchParams({
       from: q.from,
       to: q.to,
-      asOf: q.asOf,
       page: String(q.page),
       size: String(q.size),
       lens: q.lens ?? "all",

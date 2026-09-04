@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, RotateCcw } from "lucide-react";
+import { ArrowUpDown, RotateCcw, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatDate, formatTime } from "@/lib/format-datetime";
@@ -71,6 +71,12 @@ export const StaffCell = ({
  * by where it is sitting, everyone else by its number. Docket # stands in
  * for the table when there is no table.
  *
+ * A customer attached at the till is not a handle — it says who the order
+ * was for, not which order it is — so it does not join the ranking. It
+ * renders as its own marked line under the handles instead of earning a
+ * column, which would sit empty on the walk-in rows that make up most of
+ * the list; a row with no customer pays nothing for it.
+ *
  * Keeps the accessorKey as orderNumber so the DataTable search box
  * (searchKey="orderNumber") and order-number sorting keep working
  * regardless of what the cell renders.
@@ -101,6 +107,7 @@ export function buildPrimaryColumn({
       const docket = order.docketNumber;
       const tableName = order.tableId ? tableNames[order.tableId] : null;
       const orderName = order.orderName?.trim() || null;
+      const customer = order.customerName?.trim() || null;
 
       // Everything that identifies this order, most-recognisable first.
       // Whichever survives to the front becomes the heading; the rest
@@ -139,6 +146,16 @@ export function buildPrimaryColumn({
           {rest.length > 0 ? (
             <span className="text-[11px] text-muted-foreground tabular-nums">
               {rest.join(" · ")}
+            </span>
+          ) : null}
+          {customer ? (
+            <span
+              className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground"
+              title={`Customer: ${customer}`}
+            >
+              <UserRound className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="sr-only">Customer </span>
+              <span className="max-w-[200px] truncate">{customer}</span>
             </span>
           ) : null}
         </div>
