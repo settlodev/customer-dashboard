@@ -71,6 +71,68 @@ export interface ProfitAndLossReport {
   generatedAt: string;
 }
 
+/** One column of the monthly statement — a calendar month. */
+export interface PlPeriod {
+  year: number;
+  month: number;
+  /** e.g. "Jan 2026" */
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * One line of the monthly statement. Same vocabulary as `PlSectionLine`,
+ * pluralised per period: `amounts[i]` is the account's own posting in
+ * period i, `totals[i]` adds its children. `amount`/`total` span the range.
+ */
+export interface PlPeriodLine {
+  accountId: string | null;
+  code: string;
+  name: string;
+  amounts: number[];
+  amount: number;
+  children: PlPeriodLine[];
+  totals: number[];
+  total: number;
+}
+
+export interface PlPeriodGroup {
+  lines: PlPeriodLine[];
+  totals: number[];
+  total: number;
+}
+
+export interface PlPeriodSections {
+  revenue: PlPeriodGroup;
+  costOfSales: PlPeriodGroup;
+  operatingExpenses: PlPeriodGroup;
+  otherIncomeAndExpenses: PlPeriodGroup;
+  taxExpense: PlPeriodGroup;
+}
+
+export interface PlPeriodFigure {
+  byPeriod: number[];
+  total: number;
+}
+
+export interface MonthlyProfitAndLossReport {
+  locationId: string;
+  businessId: string;
+  currencyCode: string;
+  /** yyyy-MM */
+  fromMonth: string;
+  /** yyyy-MM */
+  toMonth: string;
+  periods: PlPeriod[];
+  sections: PlPeriodSections;
+  grossProfit: PlPeriodFigure;
+  operatingProfit: PlPeriodFigure;
+  netProfitBeforeTax: PlPeriodFigure;
+  netProfitAfterTax: PlPeriodFigure;
+  generatedAt: string;
+}
+
 /** One line of the nested balance-sheet view. `total` = own amount + children. */
 export interface BalanceSheetLine {
   accountId: string | null;
