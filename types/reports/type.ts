@@ -257,3 +257,37 @@ export interface ApAgingReport {
   vendors: VendorAging[];
   generatedAt: string;
 }
+
+/** A frozen month-end statement, as served by the public share endpoint. */
+export interface PublicMonthlyProfitLoss {
+  periodYear: number;
+  periodMonth: number;
+  /** e.g. "August 2026" */
+  periodLabel: string;
+  startDate: string;
+  endDate: string;
+  generatedAt: string;
+  currencyCode: string;
+  /** IANA id of the location timezone the statement was generated for, e.g. "Africa/Dar_es_Salaam". */
+  timezone: string | null;
+  sections: PlSections;
+  grossProfit: number;
+  operatingProfit: number;
+  netProfitBeforeTax: number;
+  netProfitAfterTax: number;
+  letterhead: {
+    businessName: string | null;
+    locationName: string | null;
+    addressLine: string | null;
+    city: string | null;
+    region: string | null;
+    country: string | null;
+    phone: string | null;
+    email: string | null;
+    website: string | null;
+    logoUrl: string | null;
+    tin: string | null;
+    vrn: string | null;
+  } | null;
+  liveUrl: string | null;
+}

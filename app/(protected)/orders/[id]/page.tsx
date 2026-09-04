@@ -18,6 +18,7 @@ import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import { getLocationVfdRegistration } from "@/lib/actions/location-vfd-actions";
 import { getOrderDetail } from "@/lib/actions/order-actions";
 import {
+  isClosedOrder,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_PILL,
   OrderStatus,
@@ -97,9 +98,11 @@ export default async function OrderPage({ params }: { params: Params }) {
     paymentStatus === PaymentStatus.PAID || paymentStatus === PaymentStatus.PARTIAL;
   const canShareInvoice =
     paymentStatus === PaymentStatus.NOT_PAID && status !== OrderStatus.CANCELLED;
+  // A signed bill is finished at the till, so both gates read SIGNED as
+  // closed — exactly as they did before the status existed.
   const canPrintVfd =
-    status === OrderStatus.CLOSED && vfdRegistration?.verified === true;
-  const canMoveDay = status === OrderStatus.CLOSED;
+    isClosedOrder(status) && vfdRegistration?.verified === true;
+  const canMoveDay = isClosedOrder(status);
 
   const orderId = detail.id as UUID;
 

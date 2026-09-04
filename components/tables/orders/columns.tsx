@@ -9,6 +9,7 @@ import { formatDate, formatTime } from "@/lib/format-datetime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { OrderCellAction } from "./cell-action";
 import {
   Order,
   ORDER_STATUS_LABELS,
@@ -276,9 +277,12 @@ export function buildOrdersColumns({
         // as its own marker rather than replacing it or earning a column of
         // its own, which would sit empty on almost every row.
         const refund = orderRefundBadge(order);
-        // Likewise a signed bill: the order may be CLOSED, but the money is
-        // still owed on the customer's account until settled or written off.
-        const signed = (order.signedAmount ?? 0) > 0;
+        // A signed bill normally reads SIGNED now (the OMS presents it so for
+        // this client). The marker remains for the one case the status can't
+        // carry: a bill signed while the order was still OPEN, which stays
+        // OPEN because the till still holds it.
+        const signed =
+          (order.signedAmount ?? 0) > 0 && status !== OrderStatus.SIGNED;
         return (
           <div className="flex flex-col items-start gap-1">
             <Badge variant="outline" className={ORDER_STATUS_PILL[status] ?? ""}>
@@ -307,6 +311,11 @@ export function buildOrdersColumns({
           </div>
         );
       },
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => <OrderCellAction data={row.original} />,
     },
   ];
 }

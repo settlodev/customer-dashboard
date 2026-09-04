@@ -71,6 +71,20 @@ export const listOrders = async (
   return parseStringify(data ?? []);
 };
 
+/**
+ * On the dashboard, "Closed" and "Signed" are two filter options, so a
+ * request for CLOSED means settled-and-closed: it drops orders still
+ * carrying a signed balance (those the OMS presents as SIGNED to this
+ * client). An explicit `signed` always wins; other statuses pass through.
+ */
+const signedFilterFor = (
+  status: OrderStatus | "" | undefined,
+  signed: boolean | undefined,
+): boolean | undefined => {
+  if (signed != null) return signed;
+  return status === OrderStatus.CLOSED ? false : undefined;
+};
+
 export interface SearchOrdersParams {
   fromDate?: string;
   toDate?: string;
@@ -136,7 +150,8 @@ export const searchOrders = async (
     if (params.tableId) qs.set("tableId", params.tableId);
     if (params.staffId) qs.set("staffId", params.staffId);
     if (params.customerId) qs.set("customerId", params.customerId);
-    if (params.signed != null) qs.set("signed", String(params.signed));
+    const signed = signedFilterFor(params.status, params.signed);
+    if (signed != null) qs.set("signed", String(signed));
     if (params.search) qs.set("search", params.search);
     // OMS is 0-indexed; the dashboard pager is 1-indexed.
     qs.set("page", String(params.page && params.page > 0 ? params.page - 1 : 0));
@@ -187,7 +202,8 @@ export const ordersSummary = async (
     if (params.tableId) qs.set("tableId", params.tableId);
     if (params.staffId) qs.set("staffId", params.staffId);
     if (params.customerId) qs.set("customerId", params.customerId);
-    if (params.signed != null) qs.set("signed", String(params.signed));
+    const signed = signedFilterFor(params.status, params.signed);
+    if (signed != null) qs.set("signed", String(signed));
 
     const data = await oms().get<OrdersKpis>(
       `${ordersBase}/summary?${qs.toString()}`,
@@ -317,9 +333,10 @@ export const cancelOrder = async (
   reasonType?: string,
 ): Promise<FormResponse | void> => {
   try {
+    // OMS CancelOrderRequest: { reason, cancellationReasonType, expectedVersion? }
     await oms().post(`${ordersBase}/${id}/cancel`, {
       reason,
-      reasonType,
+      cancellationReasonType: reasonType,
     });
     return SettloErrorHandler.createSuccessResponse("Order cancelled");
   } catch (error: unknown) {

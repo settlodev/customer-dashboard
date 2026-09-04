@@ -19,7 +19,12 @@ import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { OrdersTabNav } from "@/components/orders/orders-tab-nav";
 import { OrdersDataTable } from "@/components/tables/orders/orders-data-table";
 import { AbandonedDataTable } from "@/components/tables/orders/abandoned-data-table";
-import { Order, OrderStatus, PaymentStatus } from "@/types/orders/type";
+import {
+  isClosedOrder,
+  Order,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/orders/type";
 
 const formatMoney = (value: number) =>
   Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
@@ -212,8 +217,7 @@ function OrdersView({
   const k: OrdersKpis = kpis ?? {
     totalOrders: rows.length,
     openOrders: rows.filter((o) => o.orderStatus === OrderStatus.OPEN).length,
-    closedOrders: rows.filter((o) => o.orderStatus === OrderStatus.CLOSED)
-      .length,
+    closedOrders: rows.filter((o) => isClosedOrder(o.orderStatus)).length,
     grossSales: rows.reduce((sum, o) => sum + (o.grossAmount ?? 0), 0),
     unpaidOrders: rows.filter(
       (o) => o.paymentStatus && o.paymentStatus !== PaymentStatus.PAID,

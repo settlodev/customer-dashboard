@@ -375,6 +375,8 @@ class ApiClient {
   private instance: AxiosInstance;
   private readonly baseURL: string;
   private readonly audience: ApiClientAudience;
+  /** True for the Order Management Service — see the status-version header. */
+  private readonly ordersService: boolean;
   public isPlain: boolean;
 
   constructor(
@@ -417,6 +419,7 @@ class ApiClient {
                           : ACCOUNTS_SERVICE_URL;
     }
     this.audience = audience;
+    this.ordersService = service === "orders";
     this.isPlain = false;
 
     const readToken = audience === "staff" ? getStaffAuthToken : getAuthToken;
@@ -531,6 +534,12 @@ class ApiClient {
         const daySessionId = await getDaySessionIdForLocation();
         if (daySessionId) config.headers["X-Day-Session-Id"] = daySessionId;
       }
+
+      // Opt in to the SIGNED order status. The OMS stores a signed bill as
+      // CLOSED and only presents it as SIGNED to callers that send this
+      // header, so clients that do not know the value (older POS builds)
+      // keep seeing CLOSED. The dashboard knows it — see OrderStatus.SIGNED.
+      if (this.ordersService) config.headers["X-Order-Status-Version"] = "2";
 
       const isFormData =
         typeof FormData !== "undefined" && config.data instanceof FormData;
