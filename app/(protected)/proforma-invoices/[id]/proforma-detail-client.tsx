@@ -27,9 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/helpers";
+import { BusinessDocument } from "@/components/documents";
 import { ProformaTotalsRows } from "@/components/invoicing/totals-rows";
 import ProformaForm from "@/components/forms/proforma-form";
+import type { InvoicingDocument } from "@/lib/invoicing-document";
 import formStyles from "@/components/forms/styles/form-shell.module.css";
 import {
   cancelProforma,
@@ -51,6 +52,8 @@ import {
 interface Props {
   proforma: Proforma;
   timeline: InvoicingEvent[];
+  /** The branded document (shared mapper) — built server-side with the letterhead. */
+  document: InvoicingDocument;
 }
 
 const dt = (d?: string | null) =>
@@ -58,7 +61,7 @@ const dt = (d?: string | null) =>
     ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(d))
     : "—";
 
-export function ProformaDetailClient({ proforma, timeline }: Props) {
+export function ProformaDetailClient({ proforma, timeline, document }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -68,6 +71,7 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
 
   const currency = proforma.currencyCode;
   const canEdit = isProformaEditable(proforma.status);
+  const converted = proforma.status === "CONVERTED";
 
   const totals: DocTotals = {
     subtotalAmount: proforma.subtotalAmount,
@@ -149,6 +153,13 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
               View invoice
             </Link>
           </Button>
+        )}
+        {converted && (
+          <p className="pt-1 text-[11.5px] leading-relaxed text-muted-foreground">
+            Converted — this proforma is now a snapshot of the quote as
+            accepted. Payments are recorded on the invoice; the customer link
+            below keeps showing the quote and points them at the invoice.
+          </p>
         )}
       </div>
 
@@ -260,76 +271,12 @@ export function ProformaDetailClient({ proforma, timeline }: Props) {
         <TabsContent value="summary" className="mt-5">
           <div className={formStyles.formGrid}>
             <div className={formStyles.formStack}>
-              <div className="rounded-xl border border-line bg-card p-4 sm:p-5">
-                <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-                  <RoField label="Customer" value={proforma.customerName} />
-                  <RoField
-                    label="Phone"
-                    value={proforma.customerPhone ?? "—"}
-                  />
-                  <RoField
-                    label="Email"
-                    value={proforma.customerEmail ?? "—"}
-                  />
-                  <RoField label="TIN" value={proforma.customerTin ?? "—"} />
-                </div>
+              {/* The document itself — same template (letterhead, logo, tax
+                  IDs) as a purchase order or GRN, and exactly what the
+                  customer link and "Download PDF" render. */}
+              <div className="overflow-hidden rounded-xl border border-line bg-white">
+                <BusinessDocument data={document.data} theme={document.theme} />
               </div>
-
-              <div className="overflow-hidden rounded-xl border border-line bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-surface/60 text-left text-xs font-semibold uppercase text-muted-foreground">
-                        <th className="px-4 py-3">Description</th>
-                        <th className="px-4 py-3 text-right">Qty</th>
-                        <th className="px-4 py-3 text-right">Unit price</th>
-                        <th className="px-4 py-3 text-right">Discount</th>
-                        <th className="px-4 py-3 text-right">Tax</th>
-                        <th className="px-4 py-3 text-right">Line total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {proforma.lines?.map((l) => (
-                        <tr key={l.id ?? l.description}>
-                          <td className="px-4 py-3 font-medium">
-                            {l.description}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {l.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {formatMoney(l.unitPrice, currency)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
-                            {l.lineDiscountAmount
-                              ? formatMoney(l.lineDiscountAmount, currency)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
-                            {l.taxAmount
-                              ? formatMoney(l.taxAmount, currency)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
-                            {formatMoney(l.lineTotal ?? 0, currency)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {proforma.notes && (
-                <div className="rounded-xl border border-line bg-card p-4 text-sm">
-                  <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Notes
-                  </p>
-                  <p className="whitespace-pre-wrap text-ink-2">
-                    {proforma.notes}
-                  </p>
-                </div>
-              )}
             </div>
             {staticRail}
           </div>
@@ -428,17 +375,6 @@ function RailRow({ label, value }: { label: string; value: ReactNode }) {
       <span className="font-mono text-[12.5px] font-semibold text-ink-2">
         {value}
       </span>
-    </div>
-  );
-}
-
-function RoField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1.5 truncate text-sm font-medium text-ink">{value}</p>
     </div>
   );
 }

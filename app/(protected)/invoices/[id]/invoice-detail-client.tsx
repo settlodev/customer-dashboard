@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import {
   AlertTriangle,
   Ban,
-  Building2,
   Check,
   Copy,
   CreditCard,
   ExternalLink,
   FileText,
+  Link2,
   Receipt,
 } from "lucide-react";
 
@@ -29,33 +29,46 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/helpers";
-import { ProformaTotalsRows } from "@/components/invoicing/totals-rows";
+import { BusinessDocument } from "@/components/documents";
 import formStyles from "@/components/forms/styles/form-shell.module.css";
 import InvoicePaymentForm from "@/components/forms/invoice-payment-form";
 import {
-  shareInvoiceReceipt,
+  shareInvoice,
   voidInvoice,
 } from "@/lib/actions/invoicing-invoice-actions";
+import {
+  humanisePaymentMethod,
+  type InvoicingDocument,
+} from "@/lib/invoicing-document";
 import {
   INVOICE_PAYMENT_STATUS_LABELS,
   INVOICE_PAYMENT_STATUS_TONES,
   invoiceBalanceDue,
   isInvoiceOverdue,
-  type DocTotals,
   type Invoice,
+  type InvoicePayment,
   type InvoicingEvent,
 } from "@/types/invoicing/type";
 
 interface Props {
   invoice: Invoice;
+  payments: InvoicePayment[];
   timeline: InvoicingEvent[];
+  /** The branded document (shared mapper) — built server-side with the letterhead. */
+  document: InvoicingDocument;
   autoOpenPay?: boolean;
 }
 
 const dt = (d?: string | null) =>
   d ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(d)) : "—";
 
-export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
+export function InvoiceDetailClient({
+  invoice,
+  payments,
+  timeline,
+  document,
+  autoOpenPay,
+}: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -63,29 +76,32 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
   const currency = invoice.currencyCode;
   const balanceDue = invoiceBalanceDue(invoice);
   const overdue = isInvoiceOverdue(invoice);
-  const taxLabel = invoice.taxLabel || "Tax";
 
-  const canPay = invoice.status === "ISSUED" && invoice.paymentStatus !== "PAID";
-  const canVoid = invoice.status === "ISSUED" && invoice.paymentStatus === "UNPAID";
-  // A receipt only makes sense once the money is in — mirror the backend gate.
-  const canShareReceipt =
-    invoice.status === "ISSUED" && invoice.paymentStatus === "PAID";
+  const issued = invoice.status === "ISSUED";
+  const paid = invoice.paymentStatus === "PAID";
+  const canPay = issued && !paid;
+  const canVoid = issued && invoice.paymentStatus === "UNPAID";
+  // Invoices converted since the snapshot work carry a token from birth; an
+  // older one needs "Share" to mint it. Either way one token serves both the
+  // invoice link and, once paid, the receipt link.
+  const canShare = issued && !invoice.shareToken;
 
   const [paySheetOpen, setPaySheetOpen] = useState(!!autoOpenPay && canPay);
   const [confirmVoid, setConfirmVoid] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"invoice" | "receipt" | null>(null);
 
-  const shareUrl =
-    invoice.shareToken && typeof window !== "undefined"
-      ? `${window.location.origin}/receipt/${invoice.shareToken}`
+  // Absolute links need the browser origin; read it after mount so the server
+  // and client render the same markup (no hydration mismatch on the URL text).
+  const [origin, setOrigin] = useState<string | null>(null);
+  useEffect(() => setOrigin(window.location.origin), []);
+  const invoiceUrl =
+    origin && issued && invoice.shareToken
+      ? `${origin}/inv/${invoice.shareToken}`
       : null;
-
-  const docTotals: DocTotals = {
-    subtotalAmount: invoice.subtotalAmount,
-    discountAmount: invoice.discountAmount,
-    taxAmount: invoice.taxAmount,
-    totalAmount: invoice.totalAmount,
-  };
+  const receiptUrl =
+    origin && issued && paid && invoice.shareToken
+      ? `${origin}/receipt/${invoice.shareToken}`
+      : null;
 
   const doVoid = () =>
     startTransition(async () => {
@@ -98,9 +114,9 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
       if (result.responseType === "success") router.refresh();
     });
 
-  const shareReceipt = () =>
+  const share = () =>
     startTransition(async () => {
-      const result = await shareInvoiceReceipt(invoice.id);
+      const result = await shareInvoice(invoice.id);
       toast({
         variant: result.responseType === "success" ? "success" : "destructive",
         title: result.responseType === "success" ? "Success" : "Error",
@@ -109,12 +125,11 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
       if (result.responseType === "success") router.refresh();
     });
 
-  const copyLink = async () => {
-    if (!shareUrl) return;
+  const copyLink = async (kind: "invoice" | "receipt", url: string) => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(url);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1500);
     } catch {
       /* clipboard may be unavailable */
     }
@@ -141,7 +156,7 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
         </div>
       </div>
 
-      {(canPay || canVoid || canShareReceipt) && (
+      {(canPay || canVoid || canShare) && (
         <div className="space-y-2 rounded-xl border border-line bg-card p-4">
           {canPay && (
             <Button
@@ -153,14 +168,15 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
               Record payment
             </Button>
           )}
-          {canShareReceipt && (
+          {canShare && (
             <Button
+              variant="outline"
               className="w-full justify-center"
               disabled={isPending}
-              onClick={shareReceipt}
+              onClick={share}
             >
-              <Receipt className="mr-1.5 h-3.5 w-3.5" />
-              {invoice.shareToken ? "Re-share receipt" : "Share receipt"}
+              <Link2 className="mr-1.5 h-3.5 w-3.5" />
+              Share invoice
             </Button>
           )}
           {canVoid && (
@@ -177,36 +193,24 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
         </div>
       )}
 
-      {shareUrl && (
-        <div className="rounded-xl border border-line bg-card p-4">
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-            Receipt link
-          </div>
-          <p className="break-all font-mono text-[11.5px] leading-relaxed text-ink-2">
-            {shareUrl}
-          </p>
-          <div className="mt-2.5 flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 justify-center"
-              onClick={copyLink}
-            >
-              {copied ? (
-                <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" />
-              ) : (
-                <Copy className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-            <Button asChild size="sm" variant="ghost" className="flex-1 justify-center">
-              <a href={shareUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                Open
-              </a>
-            </Button>
-          </div>
-        </div>
+      {invoiceUrl && (
+        <LinkCard
+          label="Invoice link"
+          hint="Shows payments as they are recorded."
+          url={invoiceUrl}
+          copied={copied === "invoice"}
+          onCopy={() => copyLink("invoice", invoiceUrl)}
+        />
+      )}
+      {receiptUrl && (
+        <LinkCard
+          label="Receipt link"
+          hint="Paid in full — the same link, as a receipt."
+          url={receiptUrl}
+          copied={copied === "receipt"}
+          onCopy={() => copyLink("receipt", receiptUrl)}
+          icon={<Receipt className="h-3 w-3" />}
+        />
       )}
 
       <div className="rounded-xl border border-line bg-card p-4">
@@ -261,151 +265,50 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
         <TabsContent value="invoice" className="mt-5">
           <div className={formStyles.formGrid}>
             <div className={formStyles.formStack}>
-              {/* From / Bill to */}
-              <div className="grid grid-cols-1 gap-6 rounded-xl border border-line bg-card p-4 sm:grid-cols-2 sm:p-5">
-                <div>
-                  <p className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    <Building2 className="h-3 w-3" /> From
-                  </p>
-                  <p className="text-sm font-semibold text-ink">
-                    {invoice.locationName ?? invoice.businessName ?? "—"}
-                  </p>
-                  {invoice.businessName &&
-                    invoice.locationName &&
-                    invoice.businessName !== invoice.locationName && (
-                      <p className="text-sm text-muted-foreground">
-                        {invoice.businessName}
-                      </p>
-                    )}
-                  {invoice.locationAddress && (
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                      {invoice.locationAddress}
-                    </p>
-                  )}
-                  {[
-                    invoice.locationCity,
-                    invoice.locationRegion,
-                    invoice.issuerCountry,
-                  ].some(Boolean) && (
-                    <p className="text-sm text-muted-foreground">
-                      {[
-                        invoice.locationCity,
-                        invoice.locationRegion,
-                        invoice.issuerCountry,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                  )}
-                  {(invoice.issuerPhone || invoice.issuerEmail) && (
-                    <p className="text-sm text-muted-foreground">
-                      {[invoice.issuerPhone, invoice.issuerEmail]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  )}
-                  {(invoice.businessTin || invoice.businessVrn) && (
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">
-                      {invoice.businessTin ? `TIN ${invoice.businessTin}` : ""}
-                      {invoice.businessVrn ? `  VRN ${invoice.businessVrn}` : ""}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Bill to
-                  </p>
-                  <p className="text-sm font-semibold text-ink">
-                    {invoice.customerName}
-                  </p>
-                  {invoice.customerPhone && (
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.customerPhone}
-                    </p>
-                  )}
-                  {invoice.customerEmail && (
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.customerEmail}
-                    </p>
-                  )}
-                  {invoice.customerTin && (
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">
-                      TIN {invoice.customerTin}
-                    </p>
-                  )}
-                </div>
+              {/* The document itself — same template (letterhead, logo, tax
+                  IDs) as a purchase order or GRN, and byte-for-byte what
+                  "Download PDF" and the customer link render. */}
+              <div className="overflow-hidden rounded-xl border border-line bg-white">
+                <BusinessDocument data={document.data} theme={document.theme} />
               </div>
 
-              {/* Lines + totals */}
-              <div className="overflow-hidden rounded-xl border border-line bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-surface/60 text-left text-xs font-semibold uppercase text-muted-foreground">
-                        <th className="px-4 py-3">Description</th>
-                        <th className="px-4 py-3 text-right">Qty</th>
-                        <th className="px-4 py-3 text-right">Unit price</th>
-                        <th className="px-4 py-3 text-right">Discount</th>
-                        <th className="px-4 py-3 text-right">{taxLabel}</th>
-                        <th className="px-4 py-3 text-right">Line total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {invoice.lines?.map((l) => (
-                        <tr key={l.id}>
-                          <td className="px-4 py-3 font-medium">{l.description}</td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {l.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums">
-                            {formatMoney(l.unitPrice, currency)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
-                            {l.lineDiscountAmount
-                              ? formatMoney(l.lineDiscountAmount, currency)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-2">
-                            {l.taxAmount ? formatMoney(l.taxAmount, currency) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
-                            {formatMoney(l.lineTotal ?? 0, currency)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex justify-end border-t border-line p-4">
-                  <div className="w-full max-w-xs">
-                    <ProformaTotalsRows totals={docTotals} currency={currency} />
+              {payments.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-line bg-card">
+                  <div className="border-b border-line px-4 py-3 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    Payments received
                   </div>
-                </div>
-              </div>
-
-              {/* Payment terms / details */}
-              {(invoice.paymentInstructionsText || invoice.paymentDetailsText) && (
-                <div className="space-y-3 rounded-xl border border-line bg-card p-4 text-sm sm:p-5">
-                  {invoice.paymentInstructionsText && (
-                    <div>
-                      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                        Payment terms
-                      </p>
-                      <p className="whitespace-pre-wrap text-ink-2">
-                        {invoice.paymentInstructionsText}
-                      </p>
-                    </div>
-                  )}
-                  {invoice.paymentDetailsText && (
-                    <div>
-                      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                        Payment details
-                      </p>
-                      <p className="whitespace-pre-wrap text-ink-2">
-                        {invoice.paymentDetailsText}
-                      </p>
-                    </div>
-                  )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-line bg-surface/60 text-left text-xs font-semibold uppercase text-muted-foreground">
+                          <th className="px-4 py-2.5">Date</th>
+                          <th className="px-4 py-2.5">Method</th>
+                          <th className="px-4 py-2.5">Reference</th>
+                          <th className="px-4 py-2.5 text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {payments.map((p) => (
+                          <tr key={p.id}>
+                            <td className="px-4 py-2.5 font-mono text-[12.5px] tabular-nums">
+                              {dt(p.paymentDate)}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {humanisePaymentMethod(
+                                p.paymentMethodCode ?? p.paymentMethod,
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-[12.5px] text-muted-foreground">
+                              {p.reference || "—"}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums">
+                              {formatMoney(p.amount, currency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -480,6 +383,60 @@ export function InvoiceDetailClient({ invoice, timeline, autoOpenPay }: Props) {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function LinkCard({
+  label,
+  hint,
+  url,
+  copied,
+  onCopy,
+  icon,
+}: {
+  label: string;
+  hint?: string;
+  url: string;
+  copied: boolean;
+  onCopy: () => void;
+  icon?: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-card p-4">
+      <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <p className="break-all font-mono text-[11.5px] leading-relaxed text-ink-2">
+        {url}
+      </p>
+      {hint && (
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      <div className="mt-2.5 flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 justify-center"
+          onClick={onCopy}
+        >
+          {copied ? (
+            <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" />
+          ) : (
+            <Copy className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          {copied ? "Copied" : "Copy"}
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="flex-1 justify-center">
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            Open
+          </a>
+        </Button>
+      </div>
+    </div>
   );
 }
 

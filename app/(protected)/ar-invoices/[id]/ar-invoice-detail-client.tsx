@@ -10,10 +10,9 @@ import {
   ExternalLink,
   HandCoins,
   Link2,
-  Receipt,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { BusinessDocument } from "@/components/documents";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -41,6 +40,7 @@ import {
   shareCustomerArInvoice,
 } from "@/lib/actions/customer-ar-invoice-actions";
 import { fetchLocationPaymentMethods } from "@/lib/actions/payment-method-actions";
+import type { InvoicingDocument } from "@/lib/invoicing-document";
 import type { CustomerArInvoice } from "@/types/customer-ar-invoice/type";
 import type { PaymentMethod } from "@/types/payments/type";
 
@@ -54,8 +54,11 @@ const fmtDate = (iso?: string | null) =>
 
 export function ArInvoiceDetailClient({
   invoice,
+  document,
 }: {
   invoice: CustomerArInvoice;
+  /** The branded document (shared mapper) — built server-side with the letterhead. */
+  document: InvoicingDocument;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -72,22 +75,6 @@ export function ArInvoiceDetailClient({
 
   const cancelled = invoice.status === "CANCELLED";
   const settled = invoice.outstandingAmount <= 0;
-
-  // Branch, street, then "City, Region, Country" — blanks dropped so a
-  // half-filled business profile doesn't leave stray commas or empty rows.
-  const issuerLines = [
-    invoice.locationName &&
-    invoice.locationName.trim() !== invoice.businessName?.trim()
-      ? invoice.locationName
-      : null,
-    invoice.locationAddress,
-    [invoice.locationCity, invoice.locationRegion, invoice.issuerCountry]
-      .map((p) => p?.trim())
-      .filter(Boolean)
-      .join(", ") || null,
-    [invoice.issuerPhone, invoice.issuerEmail].filter(Boolean).join(" · ") ||
-      null,
-  ].filter((l): l is string => Boolean(l && l.trim()));
 
   // Signed-bill and complimentary methods can't collect — the backend
   // rejects them, so they never appear as options.
@@ -187,67 +174,20 @@ export function ArInvoiceDetailClient({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       {/* ── Document ─────────────────────────────────────────────── */}
       <div className="space-y-4 lg:col-span-2">
+        {/* The document itself — same template (letterhead, logo, tax IDs)
+            as a purchase order or GRN, and exactly what the share link and
+            "Download PDF" render. */}
+        <div className="overflow-hidden rounded-xl border border-line bg-white">
+          <BusinessDocument data={document.data} theme={document.theme} />
+        </div>
+
+        {/* Per-bill breakdown — the operational view behind the document:
+            what each signed bill owed, has paid, and still owes. */}
         <Card>
           <CardContent className="space-y-5 pt-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  From
-                </div>
-                <div className="mt-1 text-[15px] font-semibold text-ink">
-                  {invoice.businessName ?? invoice.locationName ?? "—"}
-                </div>
-                {issuerLines.map((line) => (
-                  <div key={line} className="text-[12px] text-muted-foreground">
-                    {line}
-                  </div>
-                ))}
-                {(invoice.issuerTin || invoice.issuerVrn) && (
-                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    {invoice.issuerTin && <>TIN {invoice.issuerTin}</>}
-                    {invoice.issuerTin && invoice.issuerVrn && " · "}
-                    {invoice.issuerVrn && <>VRN {invoice.issuerVrn}</>}
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Billed to
-                </div>
-                <div className="mt-1 text-[15px] font-semibold text-ink">
-                  <Link
-                    href={`/customers/${invoice.customerId}`}
-                    className="hover:underline"
-                  >
-                    {invoice.customerName ?? "Customer"}
-                  </Link>
-                </div>
-                {invoice.customerPhone && (
-                  <div className="font-mono text-[12px] text-muted-foreground">
-                    {invoice.customerPhone}
-                  </div>
-                )}
-                {invoice.customerEmail && (
-                  <div className="text-[12px] text-muted-foreground">
-                    {invoice.customerEmail}
-                  </div>
-                )}
-              </div>
-              <div className="text-right">
-                <div className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Issued
-                </div>
-                <div className="mt-1 font-mono text-[13px] text-ink">
-                  {fmtDate(invoice.issueDate)}
-                </div>
-                {invoice.dueDate && (
-                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    Due {fmtDate(invoice.dueDate)}
-                  </div>
-                )}
-              </div>
+            <div className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Bills on this invoice
             </div>
-
             {invoice.orders.map((order) => (
               <div
                 key={order.orderId}

@@ -66,6 +66,8 @@ export interface CustomerArInvoice {
   locationCity?: string | null;
   locationRegion?: string | null;
   issuerCountry?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
   currency: string;
   issueDate: string;
   dueDate?: string | null;
