@@ -44,7 +44,25 @@ export const PricingCard: React.FC<PricingCardProps> = ({
   });
 
   const handleGetStarted = () => {
-    router.push(`/register?package=${plan.id}`);
+    // Billing resolves the chosen plan by CODE, not by id:
+    // PackageService.getTrialPackage() trims/uppercases the planCode carried on
+    // the LOCATION_CREATED event and looks it up with
+    // findByCodeAndEntityTypeAndIsActiveTrue(code, LOCATION). Sending the
+    // package UUID (as this did) can never match a code, so every signup
+    // silently fell back to the default package no matter which card was
+    // clicked.
+    //
+    // LOCATION only, per the same lookup: signup creates a location, and
+    // STORE_*/WAREHOUSE_* codes are scoped to their own entity type, so they
+    // would not resolve here either. Without a usable code we send nothing and
+    // let billing apply its default rather than pass something that cannot
+    // resolve.
+    const code =
+      plan.entityType === "LOCATION" ? plan.code?.trim() : undefined;
+
+    router.push(
+      code ? `/register?package=${encodeURIComponent(code)}` : "/register",
+    );
   };
 
   const includedFeatures: RawPackageFeature[] = (plan.features ?? []).filter(

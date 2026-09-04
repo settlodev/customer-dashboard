@@ -1,17 +1,16 @@
 /**
  * Identifying a package tier.
  *
- * The billing service's PackageResponse carries NO `code` field — see
- * Settlo-Billing-Service `packages/dto/PackageResponse.java`. The catalogue
- * identifies plans by `name` alone: 'SETTLO BASIC', 'SETTLO STANDARD',
- * 'SETTLO PROFESSIONAL', 'SETTLO ENTERPRISE' (migrations V4/V5).
+ * `code` is the real identifier: billing seeds LOCATION packages as BASIC /
+ * STANDARD / PROFESSIONAL / ENTERPRISE, and STORE/WAREHOUSE packages as
+ * `<ENTITY_TYPE>_<TIER>`. It is what PackageService.getTrialPackage() resolves
+ * a chosen plan by.
  *
- * The frontend `Package` type declares an optional `code` that the packages
- * endpoint never populates, so every `plan.code?.includes(...)` test evaluated
- * to `undefined` and silently took the falsy branch. Derive the tier from the
- * name instead, which is the only identifier the API actually returns.
+ * The field is absent from PackageResponse on the services' older `main` line,
+ * so fall back to deriving the tier from `name` ('SETTLO BASIC' … 'SETTLO
+ * ENTERPRISE'). That keeps the landing page correct against either deployment
+ * rather than silently mis-tiering every plan when `code` is missing.
  */
-
 export type PlanTier =
   | "BASIC"
   | "STANDARD"
@@ -30,7 +29,14 @@ const TIERS: readonly PlanTier[] = [
  * newly-added plan, or one renamed in the admin catalogue). Callers must treat
  * null as "no special handling" rather than assuming a default.
  */
-export function planTier(pkg: { name?: string | null }): PlanTier | null {
+export function planTier(pkg: {
+  code?: string | null;
+  name?: string | null;
+}): PlanTier | null {
+  const code = (pkg.code ?? "").toUpperCase();
+  const fromCode = TIERS.find((tier) => code.includes(tier));
+  if (fromCode) return fromCode;
+
   const name = (pkg.name ?? "").toUpperCase();
   return TIERS.find((tier) => name.includes(tier)) ?? null;
 }

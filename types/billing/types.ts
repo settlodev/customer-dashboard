@@ -10,13 +10,16 @@ export interface Package {
   features: any[];
   id: string;
   /**
-   * NOT returned by GET /api/v1/packages — the billing service's
-   * PackageResponse has no `code` field and the catalogue identifies plans by
-   * `name` only ('SETTLO BASIC' … 'SETTLO ENTERPRISE'). Reading it always
-   * yields undefined, which silently disabled the landing page's popular-plan
-   * badge and its per-entity plan exclusions. Use planTier() from
-   * lib/billing/plan-tier.ts instead. Retained only for the admin/subscription
-   * call sites that still reference it.
+   * Stable package code, e.g. "BASIC" / "STANDARD" / "PROFESSIONAL" /
+   * "ENTERPRISE" for LOCATION packages, and "STORE_STANDARD" /
+   * "WAREHOUSE_PROFESSIONAL" for the other entity types.
+   *
+   * This is the identifier billing resolves a chosen plan by —
+   * PackageService.getTrialPackage() looks it up with
+   * findByCodeAndEntityTypeAndIsActiveTrue() after trimming and uppercasing.
+   * Optional because the field was only added to PackageResponse on the
+   * services' `alpha` line; a deployment still serving the older `main`
+   * omits it, and every consumer here degrades gracefully when it is absent.
    */
   code?: string;
   name: string;
