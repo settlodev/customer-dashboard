@@ -17,13 +17,25 @@ const TABS: { label: string; value: EntityType }[] = [
   { label: "Warehouse", value: "WAREHOUSE" },
 ];
 
-// Plans to exclude per entity type, e.g. Basic isn't offered for Location.
-// Keyed by tier derived from the package name — the packages endpoint returns
-// no `code`, so the previous `p.code?.includes("BASIC")` test never matched
-// and BASIC was in fact still being listed under Location.
-const EXCLUDED_TIERS: Partial<Record<EntityType, PlanTier[]>> = {
-  LOCATION: ["BASIC"],
-};
+/**
+ * Plans to hide per entity type, keyed by the tier derived from the package
+ * name (the packages endpoint returns no `code` — see lib/billing/plan-tier).
+ *
+ * LOCATION is deliberately empty despite the original code carrying a
+ * "Basic isn't offered for Location" exclusion. That exclusion was written
+ * against `p.code`, a field the API has never returned, so it never once took
+ * effect — SETTLO BASIC has always been listed here. Switching it on now would
+ * be a real behaviour change, and the wrong one:
+ *
+ *   - every seeded package is entity_type LOCATION (billing migrations V2/V4/
+ *     V5), so this is the only tab with plans in it; and
+ *   - SubscriptionService.handleLocationCreated() puts every new business on
+ *     SETTLO BASIC via PackageService.getDefaultPackage(), which hard-codes
+ *     that name. Hiding it would conceal the exact plan a new signup lands on.
+ *
+ * Kept as a working mechanism so a genuine exclusion can be added deliberately.
+ */
+const EXCLUDED_TIERS: Partial<Record<EntityType, PlanTier[]>> = {};
 
 /**
  * Annualised price, matching what PricingCard displays (it renders a /year
