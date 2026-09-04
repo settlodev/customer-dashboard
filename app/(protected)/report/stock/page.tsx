@@ -8,6 +8,7 @@ import {
   PageHeader,
   PageShell,
 } from "@/components/layouts/page-shell";
+import DataLoadError from "@/components/layouts/data-load-error";
 import { StockReportDateFilter } from "@/components/reports/stock/stock-report-date-filter";
 import { StockMovementReport } from "@/components/reports/stock/stock-movement-report";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
@@ -91,7 +92,11 @@ export default async function StockReportPage({ searchParams }: Params) {
 
   // Genuinely empty (no data at all), not just a filtered-out search/category/lens.
   const noData =
-    report.totalElements === 0 && !search && !categoryId && lens === "all";
+    report != null &&
+    report.totalElements === 0 &&
+    !search &&
+    !categoryId &&
+    lens === "all";
 
   return (
     <PageShell>
@@ -105,7 +110,9 @@ export default async function StockReportPage({ searchParams }: Params) {
       />
 
       <PageBody>
-        {noData ? (
+        {report == null ? (
+          <DataLoadError itemName="the stock report" />
+        ) : noData ? (
           <EmptyMovement />
         ) : (
           <StockMovementReport
