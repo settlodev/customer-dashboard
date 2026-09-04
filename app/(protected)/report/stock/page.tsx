@@ -60,7 +60,9 @@ export default async function StockReportPage({ searchParams }: Params) {
   const lens: StockLens = STOCK_LENS_KEYS.includes(resolved.lens as StockLens)
     ? (resolved.lens as StockLens)
     : "all";
-  const sort = resolved.sort ?? "closing,desc";
+  // No explicit sort → the backend orders by item name (or by best match
+  // while searching). Passing nothing keeps that decision server-side.
+  const sort = resolved.sort ?? "";
 
   const [currency, categories, report] = await Promise.all([
     getLocationCurrency(),
@@ -73,7 +75,7 @@ export default async function StockReportPage({ searchParams }: Params) {
       search: search || undefined,
       categoryId,
       lens,
-      sort,
+      sort: sort || undefined,
     }),
   ]);
 

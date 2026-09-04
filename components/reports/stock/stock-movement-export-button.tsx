@@ -117,7 +117,6 @@ function downloadCsv(
     "Opening",
     "In",
     "Out",
-    "Net",
     "Closing",
     `Avg cost (${currency})`,
     `Value (${currency})`,
@@ -126,10 +125,15 @@ function downloadCsv(
     "Available",
     "In transit",
     "Reorder point",
+    "Forecast reorder point",
+    "Low reason",
     "Daily use",
     "Days of cover",
     "Days idle",
     "Last movement",
+    "Expiring qty",
+    "Earliest expiry",
+    "Days to expiry",
   ];
 
   const body = rows.map((r) =>
@@ -140,7 +144,6 @@ function downloadCsv(
       Math.round(r.opening),
       Math.round(r.qtyIn),
       Math.round(r.qtyOut),
-      Math.round(r.net),
       Math.round(r.closing),
       fmtCost(r.avgCost),
       Math.round(r.value),
@@ -149,10 +152,15 @@ function downloadCsv(
       Math.round(r.available),
       Math.round(r.inTransit),
       r.reorderPoint ?? "",
+      r.forecastReorderPoint != null ? fmtCost(r.forecastReorderPoint) : "",
+      r.lowReason ?? "",
       r.dailyUse ?? "",
       r.daysOfCover ?? "",
       r.daysIdle ?? "",
       r.lastMovementAt ?? "",
+      r.expiringQty > 0 ? Math.round(r.expiringQty) : "",
+      r.earliestExpiry ?? "",
+      r.daysToExpiry ?? "",
     ]
       .map(csvCell)
       .join(","),

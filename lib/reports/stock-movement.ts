@@ -11,7 +11,14 @@
 import { composeItemName } from "@/lib/display-name";
 import type { StockMovementBreakdown } from "@/types/stock-movement-report/type";
 
-export type StockLens = "all" | "movers" | "low" | "out" | "dead" | "reserved";
+export type StockLens =
+  | "all"
+  | "movers"
+  | "low"
+  | "out"
+  | "dead"
+  | "reserved"
+  | "expiring";
 
 export interface LensDef {
   key: StockLens;
@@ -27,7 +34,11 @@ export const STOCK_LENSES: LensDef[] = [
   { key: "out", label: "Out of stock", tone: "neg" },
   { key: "dead", label: "Dead stock" },
   { key: "reserved", label: "Reserved" },
+  { key: "expiring", label: "Expiring soon", tone: "warn" },
 ];
+
+/** How far ahead the backend looks for expiring batches (its default). */
+export const EXPIRY_HORIZON_DAYS = 30;
 
 export const STOCK_LENS_KEYS: StockLens[] = STOCK_LENSES.map((l) => l.key);
 

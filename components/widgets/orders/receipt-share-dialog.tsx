@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { createReceiptSnapshot } from "@/lib/actions/order-actions";
+import {
+  createReceiptSnapshot,
+  shareOrderInvoice,
+} from "@/lib/actions/order-actions";
 
 const buildShareUrl = (slug: string): string => {
   if (typeof window !== "undefined") {
@@ -46,6 +49,23 @@ const formatTs = (iso: string | null | undefined): string | null => {
   });
 };
 
+/** The bill link the invoice share mints — same shape as the invoice dialog's. */
+const buildInvoiceShareUrl = (token: string): string => {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/invoice/${token}`;
+  }
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  return `${base}/invoice/${token}`;
+};
+
+/**
+ * The OMS rejects a receipt snapshot on an unpaid order with a message that
+ * names the alternative. Matched on the meaning rather than the exact string
+ * so a copy edit on the server doesn't quietly disable the fallback.
+ */
+const isUnpaidRejection = (message: string): boolean =>
+  /unpaid|not\s*paid|share invoice/i.test(message);
+
 export function OrderReceiptShareButton({
   orderId,
   orderNumber,
@@ -58,8 +78,16 @@ export function OrderReceiptShareButton({
   const [slug, setSlug] = useState<string | null>(null);
   const [snapshotAt, setSnapshotAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Set when the order turned out to be unpaid and we fell back to the bill
+  // link — the dialog then describes an invoice, not a receipt.
+  const [invoiceToken, setInvoiceToken] = useState<string | null>(null);
 
-  const shareUrl = slug ? buildShareUrl(slug) : "";
+  const isInvoiceFallback = invoiceToken !== null;
+  const shareUrl = invoiceToken
+    ? buildInvoiceShareUrl(invoiceToken)
+    : slug
+      ? buildShareUrl(slug)
+      : "";
 
   const handleOpen = () => {
     setOpen(true);
@@ -70,6 +98,24 @@ export function OrderReceiptShareButton({
     startMint(async () => {
       const result = await createReceiptSnapshot(orderId);
       if ("error" in result) {
+        // A receipt only exists once money has been taken. If the order is
+        // unpaid the server says so and points at the bill instead — the page
+        // renders this button off a payment status read at request time, so a
+        // payment reversed since then lands here. Follow the instruction
+        // rather than dead-ending the operator on a toast.
+        if (isUnpaidRejection(result.error)) {
+          const invoice = await shareOrderInvoice(orderId);
+          if (!("error" in invoice)) {
+            setInvoiceToken(invoice.shareToken);
+            setSnapshotAt(invoice.shareTokenIssuedAt);
+            toast({
+              title: "Shared the bill instead",
+              description:
+                "This order has no payment yet, so there is no receipt to share.",
+            });
+            return;
+          }
+        }
         toast({
           variant: "destructive",
           title: "Couldn't create receipt",
@@ -109,12 +155,15 @@ export function OrderReceiptShareButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Share receipt</DialogTitle>
+            <DialogTitle>
+              {isInvoiceFallback ? "Share bill" : "Share receipt"}
+            </DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-2">
                 <p>
-                  Snapshot of order #{orderNumber} — captures the current
-                  totals, payments and items in an immutable receipt.
+                  {isInvoiceFallback
+                    ? `Bill for order #${orderNumber} — shows what is owed and updates as payments land.`
+                    : `Snapshot of order #${orderNumber} — captures the current totals, payments and items in an immutable receipt.`}
                 </p>
                 <p className="flex items-start gap-1.5 text-muted-foreground">
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
