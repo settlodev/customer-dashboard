@@ -32,23 +32,25 @@ export const organizationSchema = {
   image: `${SITE_URL}/images/settlo_share_image.jpg`,
   description:
     "Settlo builds point-of-sale, inventory management and accounting software for small and medium businesses in Tanzania.",
-  // Matches the address shown in Footer.tsx and Location.tsx. The old
-  // markup said "Victoria Noble Centre, Bagamoyo Rd" — an address that
-  // appears nowhere on the site. Google cross-references this against the
-  // visible NAP and the Google Business Profile, so the three must agree.
+  // The current office, after the move from Noble Centre. Google
+  // cross-references this against the visible NAP and the Google Business
+  // Profile, so this must stay in step with Footer.tsx, Location.tsx and
+  // contact_us_form.tsx — all four now carry the same address.
   address: {
     "@type": "PostalAddress",
     streetAddress: "5th Floor, Auditax International, Coca-Cola Road, Mikocheni",
+    postOfficeBoxNumber: "8059",
     addressLocality: "Dar es Salaam",
     addressRegion: "Dar es Salaam",
     addressCountry: "TZ",
   },
-  // Coordinates taken from the map embed in Location.tsx.
-  geo: {
-    "@type": "GeoCoordinates",
-    latitude: "-6.7793289",
-    longitude: "39.2491219",
-  },
+  // No `geo` on purpose. The only coordinates in the codebase come from the
+  // Google Maps embed in Location.tsx, whose URL is stamped v=1705520169789
+  // (January 2024) — i.e. it predates the move from Noble Centre, so those
+  // coordinates most likely still point at the old office. Publishing a
+  // wrong GeoCoordinates would pin the business to the previous address;
+  // omitting it lets Google geocode the (verified) streetAddress instead.
+  // Re-add it once the embed is regenerated for the Auditax building.
   contactPoint: [
     {
       "@type": "ContactPoint",

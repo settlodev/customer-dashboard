@@ -41,8 +41,9 @@ const contactInfo = [
         label: "Address",
         content: (
             <>
-                8th Floor Noble Center Building,<br />
-                Plot # 89 Block 45B, P.O. Box 8059,<br />
+                5th Floor, Auditax International,<br />
+                Coca-Cola Road, Mikocheni,<br />
+                P.O. Box 8059,<br />
                 Dar Es Salaam, United Republic of Tanzania
             </>
         ),

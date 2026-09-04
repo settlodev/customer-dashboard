@@ -67,7 +67,7 @@ const faqs: Faq[] = [
   {
     question: "Nitapataje msaada?",
     answer:
-      "Timu yetu inapatikana kwa Kiswahili na Kiingereza kwa simu +255 759 229 777, barua pepe support@settlo.co.tz, na WhatsApp. Ofisi zetu zipo Victoria Noble Centre, Barabara ya Bagamoyo, Dar es Salaam.",
+      "Timu yetu inapatikana kwa Kiswahili na Kiingereza kwa simu +255 759 229 777, barua pepe support@settlo.co.tz, na WhatsApp. Ofisi zetu zipo Ghorofa ya 5, Auditax International, Barabara ya Coca-Cola, Mikocheni, Dar es Salaam.",
   },
 ];
 
