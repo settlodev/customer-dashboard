@@ -8,12 +8,12 @@ import type {
   BalanceSheetReport,
   ExpenseSummaryReport,
   GeneralLedgerReport,
+  MonthlyProfitAndLossReport,
   ProfitAndLossReport,
   TrialBalanceReport,
 } from "@/types/reports/type";
 
 import { accountingUrl } from "./accounting-client";
-import { error } from "@smithy/core/schema";
 
 export async function fetchTrialBalance(
   locationId: string,
@@ -48,6 +48,25 @@ export async function fetchProfitAndLoss(
   } catch (error) {
     rethrowIfBoundary(error);
     console.error("fetchProfitAndLoss failed", error);
+    return null;
+  }
+}
+
+export async function fetchMonthlyProfitAndLoss(
+  locationId: string,
+  fromMonth: string,
+  toMonth: string,
+): Promise<MonthlyProfitAndLossReport | null> {
+  try {
+    const params = new URLSearchParams({ locationId, fromMonth, toMonth });
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/reports/profit-and-loss/monthly?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error("fetchMonthlyProfitAndLoss failed", error);
     return null;
   }
 }
