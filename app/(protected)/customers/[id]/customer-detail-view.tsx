@@ -57,6 +57,7 @@ import type { OrdersKpis } from "@/components/orders/orders-panel";
 import { DebtorCellAction } from "@/components/tables/debtor/cell-action";
 import { usePermissions } from "@/context/permissionsContext";
 import { formatDate } from "@/lib/format-datetime";
+import type { CustomerTab } from "@/lib/customers/customer-detail-tabs";
 import type { CustomerOrderBucket } from "@/lib/orders/customer-order-buckets";
 import {
   AGING_BUCKET_LABELS,
@@ -87,22 +88,6 @@ import type { Order } from "@/types/orders/type";
 // record's detail behind segmented drill-down tabs on the right. The order
 // ledger leads, because "what has this customer got open with us" is the
 // question the page is opened to answer.
-
-export type CustomerTab =
-  | "orders"
-  | "insights"
-  | "balance"
-  | "prepaid"
-  | "profile";
-
-export function parseCustomerTab(raw: string | undefined): CustomerTab {
-  return raw === "insights" ||
-    raw === "balance" ||
-    raw === "prepaid" ||
-    raw === "profile"
-    ? raw
-    : "orders";
-}
 
 interface Props {
   customer: Customer;
