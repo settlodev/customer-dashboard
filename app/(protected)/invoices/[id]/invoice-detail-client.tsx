@@ -8,7 +8,6 @@ import {
   Copy,
   CreditCard,
   ExternalLink,
-  FileText,
   Link2,
   Receipt,
 } from "lucide-react";
@@ -28,6 +27,13 @@ import {
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  EventTimeline,
+  humanizeEventKey,
+  NEGATIVE_EVENT_RE,
+  type TimelineItem,
+} from "@/components/ui/event-timeline";
+import { formatDateTime } from "@/lib/format-datetime";
 import { formatMoney } from "@/lib/helpers";
 import { BusinessDocument } from "@/components/documents";
 import formStyles from "@/components/forms/styles/form-shell.module.css";
@@ -61,6 +67,27 @@ interface Props {
 
 const dt = (d?: string | null) =>
   d ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(d)) : "—";
+
+/**
+ * The invoicing audit rail, shown exactly like the order timeline. Timestamps
+ * go through the shared formatter so the server and client agree — a bare
+ * `toLocaleString()` in a client component renders with Node's ICU on the SSR
+ * pass and the browser's on hydration.
+ */
+function toTimelineItems(events: InvoicingEvent[]): TimelineItem[] {
+  return [...events]
+    .sort(
+      (a, b) =>
+        new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+    )
+    .map((e) => ({
+      key: e.id,
+      title: humanizeEventKey(e.eventType),
+      timestamp: formatDateTime(e.occurredAt, { seconds: true }) ?? e.occurredAt,
+      message: e.description,
+      tone: NEGATIVE_EVENT_RE.test(e.eventType) ? ("neg" as const) : undefined,
+    }));
+}
 
 export function InvoiceDetailClient({
   invoice,
@@ -319,39 +346,7 @@ export function InvoiceDetailClient({
         <TabsContent value="timeline" className="mt-5">
           <div className={formStyles.formGrid}>
             <div className="min-w-0 rounded-xl border border-line bg-card p-4 sm:p-5">
-              {timeline.length === 0 ? (
-                <div className="py-12 text-center text-sm text-muted-foreground">
-                  No events yet.
-                </div>
-              ) : (
-                <ol className="space-y-1">
-                  {timeline.map((e, i) => (
-                    <li key={e.id} className="flex gap-3.5">
-                      <div className="flex flex-col items-center">
-                        <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg border border-line bg-canvas text-ink-2">
-                          <FileText className="h-3.5 w-3.5" />
-                        </span>
-                        {i < timeline.length - 1 && (
-                          <span className="my-1 w-px flex-1 bg-line" />
-                        )}
-                      </div>
-                      <div className="flex-1 pb-4 pt-0.5">
-                        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                          {e.eventType}
-                        </div>
-                        {e.description && (
-                          <div className="mt-1 text-sm font-medium text-ink">
-                            {e.description}
-                          </div>
-                        )}
-                        <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                          {new Date(e.occurredAt).toLocaleString()}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
+              <EventTimeline items={toTimelineItems(timeline)} />
             </div>
             {rail}
           </div>

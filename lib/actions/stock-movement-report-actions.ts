@@ -4,6 +4,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { inventoryUrl } from "./inventory-client";
 import type {
+  LowReason,
   StockMovementReportResponse,
   StockMovementReportRow,
   StockMovementReportSummary,
@@ -28,7 +29,6 @@ const EMPTY_SUMMARY: StockMovementReportSummary = {
   totalOpening: 0,
   totalIn: 0,
   totalOut: 0,
-  totalNet: 0,
   totalClosing: 0,
   totalValue: 0,
   totalInTransit: 0,
@@ -38,6 +38,7 @@ const EMPTY_SUMMARY: StockMovementReportSummary = {
   out: 0,
   dead: 0,
   reserved: 0,
+  expiring: 0,
 };
 
 const EMPTY_STOCK_MOVEMENT_REPORT: StockMovementReportResponse = {
@@ -92,7 +93,6 @@ export async function getStockMovementReport(
       totalOpening: n(s.totalOpening),
       totalIn: n(s.totalIn),
       totalOut: n(s.totalOut),
-      totalNet: n(s.totalNet),
       totalClosing: n(s.totalClosing),
       totalValue: n(s.totalValue),
       totalInTransit: n(s.totalInTransit),
@@ -102,6 +102,7 @@ export async function getStockMovementReport(
       out: n(s.out),
       dead: n(s.dead),
       reserved: n(s.reserved),
+      expiring: n(s.expiring),
     };
 
     const content: StockMovementReportRow[] = Array.isArray(raw.content)
@@ -133,7 +134,6 @@ function mapRow(r: Record<string, unknown>): StockMovementReportRow {
     opening: n(r.opening),
     qtyIn: n(r.qtyIn),
     qtyOut: n(r.qtyOut),
-    net: n(r.net),
     closing: n(r.closing),
     value: n(r.value),
     reserved: n(r.reserved),
@@ -142,6 +142,15 @@ function mapRow(r: Record<string, unknown>): StockMovementReportRow {
     avgCost: n(r.avgCost),
     reorderPoint: nOrNull(r.reorderPoint),
     status,
+    lowReason:
+      r.lowReason === "threshold" || r.lowReason === "forecast"
+        ? (r.lowReason as LowReason)
+        : null,
+    forecastReorderPoint: nOrNull(r.forecastReorderPoint),
+    expiringQty: n(r.expiringQty),
+    expiringBatches: Math.round(n(r.expiringBatches)),
+    earliestExpiry: r.earliestExpiry == null ? null : String(r.earliestExpiry),
+    daysToExpiry: iOrNull(r.daysToExpiry),
     dailyUse: nOrNull(r.dailyUse),
     daysOfCover: iOrNull(r.daysOfCover),
     daysIdle: iOrNull(r.daysIdle),
