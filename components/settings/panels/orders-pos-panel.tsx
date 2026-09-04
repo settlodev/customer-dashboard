@@ -22,6 +22,7 @@ import {
 import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -107,10 +108,6 @@ export function OrdersPosPanel({
         icon={<ShoppingBag className="h-4 w-4" />}
         title="Order behaviour"
         description="How orders are created and handled on the POS."
-        onSave={panel.save}
-        onDiscard={() => panel.reset()}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
         <div className="space-y-[7px]">
           <span className={standaloneLabelClass}>Ordering mode</span>
@@ -229,10 +226,6 @@ export function OrdersPosPanel({
         icon={<Monitor className="h-4 w-4" />}
         title="POS display"
         description="What cashiers see while taking orders."
-        onSave={panel.save}
-        onDiscard={() => panel.reset()}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ToggleRow
@@ -256,10 +249,6 @@ export function OrdersPosPanel({
         icon={<Hash className="h-4 w-4" />}
         title="Order numbering"
         description="How generated order names and numbers look on tickets and receipts."
-        onSave={panel.save}
-        onDiscard={() => panel.reset()}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Order name prefix" hint="Short code before the number, e.g. ORD.">
@@ -350,6 +339,13 @@ export function OrdersPosPanel({
           />
         </div>
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={panel.dirtyCount}
+        isPending={panel.isPending}
+        onSave={panel.save}
+        onDiscard={() => panel.reset()}
+      />
     </div>
   );
 }

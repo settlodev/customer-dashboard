@@ -6,13 +6,11 @@ import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
 import * as z from "zod";
 import { UUID } from "node:crypto";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -30,22 +28,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  FieldLabel,
+  ToggleRow,
+  controlSelectTriggerClass,
+  standaloneLabelClass,
+} from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { SettingsSection } from "@/components/settings/shared/settings-section";
+import { ConfirmDeleteButton } from "@/components/settings/shared/confirm-delete-button";
+import {
+  RowTag,
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "@/components/settings/shared/settings-table";
 import {
   Loader2,
   Plus,
-  Pencil,
-  Trash2,
   GripVertical,
   X,
+  Hash,
+  HelpCircle,
   MessageSquare,
+  MessageSquareText,
   CheckSquare,
   List,
   AlignLeft,
+  Tag,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -67,11 +82,11 @@ const QUESTION_TYPE_LABELS: Record<BookingQuestionType, string> = {
 };
 
 const QUESTION_TYPE_ICONS: Record<BookingQuestionType, React.ReactNode> = {
-  [BookingQuestionType.TEXT]: <AlignLeft className="h-4 w-4" />,
-  [BookingQuestionType.NUMBER]: <AlignLeft className="h-4 w-4" />,
-  [BookingQuestionType.BOOLEAN]: <MessageSquare className="h-4 w-4" />,
-  [BookingQuestionType.SINGLE_CHOICE]: <List className="h-4 w-4" />,
-  [BookingQuestionType.MULTI_CHOICE]: <CheckSquare className="h-4 w-4" />,
+  [BookingQuestionType.TEXT]: <AlignLeft className="h-3.5 w-3.5" />,
+  [BookingQuestionType.NUMBER]: <Hash className="h-3.5 w-3.5" />,
+  [BookingQuestionType.BOOLEAN]: <MessageSquare className="h-3.5 w-3.5" />,
+  [BookingQuestionType.SINGLE_CHOICE]: <List className="h-3.5 w-3.5" />,
+  [BookingQuestionType.MULTI_CHOICE]: <CheckSquare className="h-3.5 w-3.5" />,
 };
 
 type BookingQuestionFormValues = z.infer<typeof BookingQuestionSchema>;
@@ -205,17 +220,18 @@ const QuestionDialog = ({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(submitData, onInvalid)}
-            className="space-y-4"
+            className="space-y-3.5"
           >
             <FormField
               control={form.control}
               name="questionText"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Question</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel required>Question</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       {...field}
+                      prefix={<HelpCircle className="h-3.5 w-3.5" />}
                       placeholder="e.g., Do you have any dietary requirements?"
                       disabled={isPending}
                     />
@@ -225,20 +241,20 @@ const QuestionDialog = ({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="questionType"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>Type</FieldLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       disabled={isPending}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className={controlSelectTriggerClass}>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                       </FormControl>
@@ -263,13 +279,15 @@ const QuestionDialog = ({
                 control={form.control}
                 name="sortOrder"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sort Order</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel>Sort Order</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         {...field}
                         type="number"
+                        mono
                         min={0}
+                        prefix={<Hash className="h-3.5 w-3.5" />}
                         disabled={isPending}
                         onChange={(e) =>
                           field.onChange(parseInt(e.target.value) || 0)
@@ -282,21 +300,18 @@ const QuestionDialog = ({
               />
             </div>
 
-            <div className="flex gap-6">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="required"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Required</FormLabel>
-                  </FormItem>
+                  <ToggleRow
+                    label="Required"
+                    hint="Guests can't finish the booking without answering."
+                    checked={!!field.value}
+                    onChange={field.onChange}
+                    disabled={isPending}
+                  />
                 )}
               />
 
@@ -304,16 +319,13 @@ const QuestionDialog = ({
                 control={form.control}
                 name="active"
                 render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Active</FormLabel>
-                  </FormItem>
+                  <ToggleRow
+                    label="Active"
+                    hint="Turn off to hide the question without deleting it."
+                    checked={!!field.value}
+                    onChange={field.onChange}
+                    disabled={isPending}
+                  />
                 )}
               />
             </div>
@@ -322,8 +334,8 @@ const QuestionDialog = ({
               <>
                 <Separator />
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Options</FormLabel>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={standaloneLabelClass}>Options</span>
                     <Button
                       type="button"
                       variant="outline"
@@ -337,80 +349,83 @@ const QuestionDialog = ({
                       }
                       disabled={isPending}
                     >
-                      <Plus className="h-3 w-3 mr-1" />
+                      <Plus className="h-3.5 w-3.5" />
                       Add Option
                     </Button>
                   </div>
 
                   {fields.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                    <p className="rounded-lg border border-dashed border-line py-4 text-center text-sm text-muted-foreground">
                       No options yet. Add at least 2 options for select-type
                       questions.
                     </p>
                   )}
 
                   {fields.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2"
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <FormField
-                        control={form.control}
-                        name={`options.${index}.label`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder={`Label ${index + 1}`}
-                                disabled={isPending}
-                                onChange={(e) => {
-                                  const labelValue = e.target.value;
-                                  field.onChange(labelValue);
-                                  // Mirror label into value when value is empty —
-                                  // most options use the same string for both.
-                                  const currentValue = form.getValues(
-                                    `options.${index}.value`,
-                                  );
-                                  if (!currentValue) {
-                                    form.setValue(
+                    <div key={item.id} className="flex items-start gap-2">
+                      <GripVertical className="mt-3.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name={`options.${index}.label`}
+                          render={({ field }) => (
+                            <FormItem className="min-w-0 space-y-[7px]">
+                              <FormControl>
+                                <ControlInput
+                                  {...field}
+                                  prefix={<Tag className="h-3.5 w-3.5" />}
+                                  placeholder={`Label ${index + 1}`}
+                                  disabled={isPending}
+                                  onChange={(e) => {
+                                    const labelValue = e.target.value;
+                                    field.onChange(labelValue);
+                                    // Mirror label into value when value is empty —
+                                    // most options use the same string for both.
+                                    const currentValue = form.getValues(
                                       `options.${index}.value`,
-                                      labelValue,
                                     );
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`options.${index}.value`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder={`Value ${index + 1}`}
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                    if (!currentValue) {
+                                      form.setValue(
+                                        `options.${index}.value`,
+                                        labelValue,
+                                      );
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`options.${index}.value`}
+                          render={({ field }) => (
+                            <FormItem className="min-w-0 space-y-[7px]">
+                              <FormControl>
+                                <ControlInput
+                                  {...field}
+                                  mono
+                                  prefix={<Hash className="h-3.5 w-3.5" />}
+                                  placeholder={`Value ${index + 1}`}
+                                  disabled={isPending}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
-                        size="icon"
+                        size="iconSm"
                         onClick={() => remove(index)}
                         disabled={isPending}
-                        className="flex-shrink-0"
+                        aria-label={`Remove option ${index + 1}`}
+                        className="mt-2 shrink-0"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ))}
@@ -434,11 +449,9 @@ const QuestionDialog = ({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                )}
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {isPending
-                  ? "Saving..."
+                  ? "Saving…"
                   : editingQuestion
                     ? "Update Question"
                     : "Create Question"}
@@ -496,118 +509,96 @@ const BookingQuestionsManager = ({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Booking Questions</CardTitle>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Question
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {sortedQuestions.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No booking questions yet
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add custom questions for guests to answer during booking
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleAdd}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add First Question
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sortedQuestions.map((question) => (
-                <div
-                  key={question.id}
-                  className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">
-                        {question.questionText}
-                      </span>
-                      {question.required && (
-                        <Badge variant="secondary" className="text-xs">
-                          Required
-                        </Badge>
+      <SettingsSection
+        icon={<MessageSquareText className="h-4 w-4" />}
+        title="Booking questions"
+        description="Extra questions guests answer while booking — dietary needs, occasion, seating preference."
+        footer={
+          <Button size="sm" onClick={handleAdd}>
+            <Plus className="h-3.5 w-3.5" /> Add question
+          </Button>
+        }
+      >
+        <SettingsTableCard
+          isEmpty={sortedQuestions.length === 0}
+          emptyLabel="No booking questions yet. Add one to collect what you need before guests arrive."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Question</th>
+                <th className={thClass}>Type</th>
+                <th className={`${thClass} text-right`}>Order</th>
+                <th className={thClass}>Status</th>
+                <th className={`${thClass} text-right`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedQuestions.map((question) => {
+                const optionLabels = [...question.options]
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((o) => o.label)
+                  .join(" · ");
+                return (
+                  <tr key={question.id} className={trClass}>
+                    <td className={tdClass}>
+                      <span className="font-medium">{question.questionText}</span>
+                      {question.required && <RowTag>Required</RowTag>}
+                      {optionLabels && (
+                        <span className="mt-1 block text-[12px] text-muted-foreground">
+                          {optionLabels}
+                        </span>
                       )}
-                      {!question.active && (
-                        <Badge variant="outline" className="text-xs">
-                          Inactive
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    </td>
+                    <td className={tdClass}>
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
                         {QUESTION_TYPE_ICONS[question.questionType]}
-                        <span>
-                          {QUESTION_TYPE_LABELS[question.questionType]}
-                        </span>
-                      </div>
-                      {question.options.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          &middot; {question.options.length} options
-                        </span>
-                      )}
-                    </div>
-                    {question.options.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {question.options
-                          .sort((a, b) => a.sortOrder - b.sortOrder)
-                          .map((opt, i) => (
-                            <Badge
-                              key={i}
-                              variant="outline"
-                              className="text-xs font-normal"
-                            >
-                              {opt.label}
-                            </Badge>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(question)}
-                      className="h-8 w-8"
+                        {QUESTION_TYPE_LABELS[question.questionType]}
+                      </span>
+                    </td>
+                    <td
+                      className={`${tdClass} text-right font-mono text-[12px] tabular-nums text-ink-2`}
                     >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(question.id)}
-                      disabled={deletingId === question.id}
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                    >
-                      {deletingId === question.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      {question.sortOrder}
+                    </td>
+                    <td className={tdClass}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${
+                          question.active ? "text-pos" : "text-muted-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            question.active ? "bg-pos" : "bg-muted-2"
+                          }`}
+                        />
+                        {question.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className={tdActionsClass}>
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEdit(question)}
+                        >
+                          Edit
+                        </Button>
+                        <ConfirmDeleteButton
+                          disabled={deletingId === question.id}
+                          onConfirm={() => handleDelete(question.id)}
+                          title="Delete this booking question?"
+                          description={`"${question.questionText}" stops appearing on the booking page. Answers already collected on existing reservations are kept, but no new ones will be gathered.`}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </SettingsTableCard>
+      </SettingsSection>
 
       <QuestionDialog
         open={dialogOpen}

@@ -77,3 +77,33 @@ export function SettingsSaveBar({
     </div>
   );
 }
+
+/**
+ * One save scope: a section controller (`useSettingsPanel`) or any hand-rolled
+ * equivalent. `SettingsSaveBar` takes a single scope's numbers, so a screen
+ * that edits two records (e.g. the Location entity *and* its settings row)
+ * folds them together with {@link combineSaveScopes} first.
+ */
+export interface SaveScope {
+  dirtyCount: number;
+  isDirty: boolean;
+  isPending: boolean;
+  save: () => void;
+  reset: () => void;
+}
+
+/**
+ * Fold several scopes into one for a single page-level save bar: counts add
+ * up, pending is any-of, `save()` fires only the scopes that actually changed,
+ * and `reset()` re-seeds all of them.
+ */
+export function combineSaveScopes(...scopes: SaveScope[]): SaveScope {
+  const dirtyCount = scopes.reduce((n, s) => n + s.dirtyCount, 0);
+  return {
+    dirtyCount,
+    isDirty: dirtyCount > 0,
+    isPending: scopes.some((s) => s.isPending),
+    save: () => scopes.forEach((s) => s.isDirty && s.save()),
+    reset: () => scopes.forEach((s) => s.reset()),
+  };
+}

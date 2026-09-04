@@ -17,7 +17,7 @@ export function PanelHeader({
 }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+      <h2 className="text-xl font-semibold tracking-[-0.01em] text-ink">
         {title}
       </h2>
       {description && (

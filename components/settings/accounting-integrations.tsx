@@ -40,25 +40,25 @@ export default function AccountingIntegrations() {
       {accountingProviders.map((provider) => (
         <div
           key={provider.name}
-          className="relative border border-gray-200 dark:border-gray-700 rounded-lg p-5 flex flex-col justify-between opacity-50 pointer-events-none select-none"
+          className="pointer-events-none relative flex select-none flex-col justify-between rounded-[10px] border border-line bg-card p-5 opacity-60"
         >
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="mb-2 flex items-center gap-3">
               {provider.logo}
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-[13px] font-semibold text-ink">
                 {provider.name}
               </h3>
             </div>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="mb-4 text-[12px] text-muted-foreground">
               {provider.description}
             </p>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 w-fit">
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Coming Soon
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-line bg-canvas px-2.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-warn" />
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              Coming soon
             </span>
-          </div>
+          </span>
         </div>
       ))}
     </div>

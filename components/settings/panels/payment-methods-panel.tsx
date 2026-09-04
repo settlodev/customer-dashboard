@@ -19,9 +19,21 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ControlInput } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -95,14 +107,9 @@ export function PaymentMethodsPanel({ location, onNavigateToIntegrations }: Prop
     [toast],
   );
 
+  // Confirmation lives in the AlertDialog that triggers this — see the
+  // "Reset to defaults" button below.
   const handleReset = useCallback(() => {
-    if (
-      !confirm(
-        "Reset to the default set of accepted payment methods? Your current selections will be replaced.",
-      )
-    ) {
-      return;
-    }
     startResetTransition(async () => {
       try {
         await initializeLocationPaymentMethods();
@@ -155,6 +162,7 @@ export function PaymentMethodsPanel({ location, onNavigateToIntegrations }: Prop
       />
 
       <SettingsSection
+        icon={<CreditCard className="h-4 w-4" />}
         title="Accepted methods"
         description={
           loading
@@ -162,29 +170,50 @@ export function PaymentMethodsPanel({ location, onNavigateToIntegrations }: Prop
             : `${counts.enabledLeaves} of ${counts.totalLeaves} payment methods enabled`
         }
       >
-        <div className="flex items-center justify-between gap-3 -mt-1">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
+        <div className="-mt-1 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:max-w-sm">
+            <ControlInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search methods (e.g. Cash, CRDB, M-Pesa)…"
-              className="pl-8 h-8 text-sm"
+              prefix={<Search className="h-3.5 w-3.5" />}
+              aria-label="Search payment methods"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            disabled={resetPending || loading}
-          >
-            {resetPending ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            Reset to defaults
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resetPending || loading}
+                className="w-full shrink-0 sm:w-auto"
+              >
+                {resetPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
+                {resetPending ? "Resetting…" : "Reset to defaults"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent tone="danger">
+              <AlertDialogIcon>
+                <RotateCcw className="h-5 w-5" />
+              </AlertDialogIcon>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset accepted payment methods?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Every method you have turned on or off at this location is
+                  replaced by the default set. The change reaches the POS
+                  immediately.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep my selection</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {loading ? (
@@ -194,13 +223,15 @@ export function PaymentMethodsPanel({ location, onNavigateToIntegrations }: Prop
             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-medium">{error}</p>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => void load()}
-                className="mt-1 underline text-xs hover:no-underline"
+                className="mt-1 h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 Retry
-              </button>
+              </Button>
             </div>
           </div>
         ) : filtered.length === 0 ? (

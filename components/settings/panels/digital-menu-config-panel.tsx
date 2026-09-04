@@ -1,10 +1,17 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+import { Globe, QrCode } from "lucide-react";
+
+import {
+  ControlInput,
+  ControlTextarea,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
+import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -24,6 +31,7 @@ export function DigitalMenuConfigPanel({
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
+  const d = p.isPending;
 
   return (
     <div className="space-y-6">
@@ -33,55 +41,80 @@ export function DigitalMenuConfigPanel({
       />
 
       <SettingsSection
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
+        icon={<QrCode className="h-4 w-4" />}
+        title="Menu configuration"
+        description="Where the menu lives and what customers can see or do on it."
       >
-        <Field label="Custom domain">
-          <Input
-            maxLength={255}
-            placeholder="menu.example.com"
-            value={v.digitalMenuDomain ?? ""}
-            onChange={(e) => p.setField("digitalMenuDomain", e.target.value)}
-            disabled={p.isPending}
-          />
-        </Field>
-        <SettingsSwitchRow
-          label="Allow ordering from the digital menu"
-          checked={!!v.enableDigitalMenuOrdering}
-          onChange={(x) => p.setField("enableDigitalMenuOrdering", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Show prices on the digital menu"
-          checked={!!v.showPricesOnDigitalMenu}
-          onChange={(x) => p.setField("showPricesOnDigitalMenu", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Show stock availability on the digital menu"
-          checked={!!v.showStockOnDigitalMenu}
-          onChange={(x) => p.setField("showStockOnDigitalMenu", x)}
-          disabled={p.isPending}
-        />
-        <Field label="Welcome message">
-          <Textarea
-            rows={3}
-            value={v.digitalMenuWelcomeMessage ?? ""}
-            onChange={(e) => p.setField("digitalMenuWelcomeMessage", e.target.value)}
-            disabled={p.isPending}
-          />
-        </Field>
-      </SettingsSection>
-    </div>
-  );
-}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+          <Field
+            label="Custom domain"
+            hint="Point a CNAME at Settlo, then enter the hostname here."
+            optional
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={255}
+                prefix={<Globe className="h-3.5 w-3.5" />}
+                placeholder="menu.example.com"
+                value={v.digitalMenuDomain ?? ""}
+                onChange={(e) => p.setField("digitalMenuDomain", e.target.value)}
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field
+            label="Welcome message"
+            hint="Shown at the top of the menu before the first category."
+            optional
+            className="sm:col-span-2"
+          >
+            {(id) => (
+              <ControlTextarea
+                id={id}
+                rows={3}
+                placeholder="e.g. Karibu! Order straight from your table."
+                value={v.digitalMenuWelcomeMessage ?? ""}
+                onChange={(e) =>
+                  p.setField("digitalMenuWelcomeMessage", e.target.value)
+                }
+                disabled={d}
+              />
+            )}
+          </Field>
+        </div>
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ToggleRow
+            label="Allow ordering"
+            hint="Customers can place an order straight from the menu."
+            checked={!!v.enableDigitalMenuOrdering}
+            onChange={(x) => p.setField("enableDigitalMenuOrdering", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Show prices"
+            hint="Print the selling price beside each item."
+            checked={!!v.showPricesOnDigitalMenu}
+            onChange={(x) => p.setField("showPricesOnDigitalMenu", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Show stock availability"
+            hint="Mark items that are currently out of stock."
+            checked={!!v.showStockOnDigitalMenu}
+            onChange={(x) => p.setField("showStockOnDigitalMenu", x)}
+            disabled={d}
+          />
+        </div>
+      </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

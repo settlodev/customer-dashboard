@@ -10,6 +10,7 @@ import {
 import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -43,10 +44,6 @@ export function PaymentOpsPanel({
         icon={<Wallet className="h-4 w-4" />}
         title="Till behaviour"
         description="How payments flow at the point of sale."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ToggleRow
@@ -86,10 +83,6 @@ export function PaymentOpsPanel({
         icon={<ShieldCheck className="h-4 w-4" />}
         title="Approvals"
         description="Manager sign-off required for sensitive actions."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <ToggleRow
@@ -115,6 +108,13 @@ export function PaymentOpsPanel({
           />
         </div>
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

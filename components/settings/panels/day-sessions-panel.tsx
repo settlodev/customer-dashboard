@@ -1,16 +1,27 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { CalendarClock, Clock, Coins, Sun, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import {
+  ControlInput,
+  StandaloneField as Field,
+  ToggleRow,
+  standaloneLabelClass,
+} from "@/components/ui/field";
+import {
   SettingsSection,
-  SettingsSwitchRow,
+  parseOptionalNumber,
 } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import {
+  SettingsSaveBar,
+  combineSaveScopes,
+  type SaveScope,
+} from "../shared/settings-save-bar";
 import type {
   DayOfWeek,
   LocationSettings,
@@ -37,6 +48,9 @@ export function DaySessionsPanel({
   onSaved: (next: LocationSettings) => void;
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
+  const hours = useOperatingHours(settings, onSaved);
+  // Both scopes write the same settings row, so one bar saves whichever changed.
+  const page = combineSaveScopes(p, hours);
   const v = p.values;
 
   return (
@@ -47,81 +61,107 @@ export function DaySessionsPanel({
       />
 
       <SettingsSection
+        icon={<Sun className="h-4 w-4" />}
         title="Day sessions"
         description="Group orders, cash movements, and staff activity into a discrete business day."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
-        <SettingsSwitchRow
-          label="Auto-open day"
-          description="Open the day automatically at the start of operating hours."
-          checked={!!v.autoOpenDay}
-          onChange={(x) => p.setField("autoOpenDay", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Auto-close day"
-          description="Close the day automatically at the end of operating hours."
-          checked={!!v.autoCloseDay}
-          onChange={(x) => p.setField("autoCloseDay", x)}
-          disabled={p.isPending}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
+            label="Auto-open day"
+            hint="Open the day automatically at the start of operating hours."
+            checked={!!v.autoOpenDay}
+            onChange={(x) => p.setField("autoOpenDay", x)}
+            disabled={p.isPending}
+          />
+          <ToggleRow
+            label="Auto-close day"
+            hint="Close the day automatically at the end of operating hours."
+            checked={!!v.autoCloseDay}
+            onChange={(x) => p.setField("autoCloseDay", x)}
+            disabled={p.isPending}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <Field
-            label="Close grace (minutes)"
-            hint="Delay after close-time before auto-close fires. 0–720 (12 h). The extend button is only available inside this window."
+            label="Close grace period"
+            hint="Delay after close time before auto-close fires. The extend button only works inside this window."
           >
-            <Input
-              type="number"
-              min={0}
-              max={720}
-              value={v.closeGraceMinutes ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "closeGraceMinutes",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={0}
+                max={720}
+                suffix="min"
+                prefix={<Timer className="h-3.5 w-3.5" />}
+                value={v.closeGraceMinutes ?? ""}
+                onChange={(e) =>
+                  p.setField("closeGraceMinutes", parseOptionalNumber(e.target.value))
+                }
+                placeholder="30"
+                disabled={p.isPending || !v.autoCloseDay}
+              />
+            )}
           </Field>
           <Field
-            label="Max session length (hours)"
-            hint="Hard upper bound — sessions longer than this are auto-closed regardless of operating hours. 6–168 (7 days)."
+            label="Max session length"
+            hint="Hard ceiling — longer sessions auto-close whatever the operating hours say."
           >
-            <Input
-              type="number"
-              min={6}
-              max={168}
-              value={v.maxSessionLengthHours ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "maxSessionLengthHours",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={6}
+                max={168}
+                suffix="hours"
+                prefix={<Clock className="h-3.5 w-3.5" />}
+                value={v.maxSessionLengthHours ?? ""}
+                onChange={(e) =>
+                  p.setField("maxSessionLengthHours", parseOptionalNumber(e.target.value))
+                }
+                placeholder="24"
+                disabled={p.isPending}
+              />
+            )}
           </Field>
-          <Field label="Minimum settlement amount">
-            <Input
-              type="number"
-              min={0}
-              value={v.minimumSettlementAmount ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "minimumSettlementAmount",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
+          <Field
+            label="Minimum settlement amount"
+            hint="Below this, a settlement isn't required at close."
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                suffix={settings.currency || undefined}
+                prefix={<Coins className="h-3.5 w-3.5" />}
+                value={v.minimumSettlementAmount ?? ""}
+                onChange={(e) =>
+                  p.setField("minimumSettlementAmount", parseOptionalNumber(e.target.value))
+                }
+                placeholder="0"
+                disabled={p.isPending}
+              />
+            )}
           </Field>
         </div>
       </SettingsSection>
 
-      <OperatingHoursCard settings={settings} onSaved={onSaved} />
+      <OperatingHoursCard hours={hours} />
+
+      <SettingsSaveBar
+        dirtyCount={page.dirtyCount}
+        isPending={page.isPending}
+        onSave={page.save}
+        onDiscard={page.reset}
+      />
     </div>
   );
 }
@@ -133,13 +173,19 @@ export function DaySessionsPanel({
  * active so we don't clobber operating hours the backend should keep
  * around for re-use later.
  */
-function OperatingHoursCard({
-  settings,
-  onSaved,
-}: {
-  settings: LocationSettings;
-  onSaved: (next: LocationSettings) => void;
-}) {
+interface OperatingHoursScope extends SaveScope {
+  hours: OperatingHours[];
+  continuous: boolean;
+  cutoff: string;
+  setContinuous: (next: boolean) => void;
+  setCutoff: (next: string) => void;
+  update: (day: DayOfWeek, patch: Partial<OperatingHours>) => void;
+}
+
+function useOperatingHours(
+  settings: LocationSettings,
+  onSaved: (next: LocationSettings) => void,
+): OperatingHoursScope {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -173,11 +219,18 @@ function OperatingHoursCard({
     settings.dailyCutoffTime ?? DEFAULT_CUTOFF,
   );
 
-  const isDirty =
-    continuous !== continuousBaseline ||
+  // One "change" per edited thing so the page bar's count reads sensibly:
+  // the 24h flag, plus either the cutoff or the weekly table.
+  const dirtyCount =
+    (continuous !== continuousBaseline ? 1 : 0) +
     (continuous
       ? cutoff !== cutoffBaseline
-      : JSON.stringify(hours) !== JSON.stringify(hoursBaseline));
+        ? 1
+        : 0
+      : JSON.stringify(hours) !== JSON.stringify(hoursBaseline)
+        ? 1
+        : 0);
+  const isDirty = dirtyCount > 0;
 
   const update = (day: DayOfWeek, patch: Partial<OperatingHours>) =>
     setHours((prev) =>
@@ -210,88 +263,108 @@ function OperatingHoursCard({
       }
     });
 
+  const reset = () => {
+    setHours(hoursBaseline);
+    setContinuous(continuousBaseline);
+    setCutoff(cutoffBaseline);
+  };
+
+  return {
+    hours,
+    continuous,
+    cutoff,
+    setContinuous,
+    setCutoff,
+    update,
+    dirtyCount,
+    isDirty,
+    isPending,
+    save,
+    reset,
+  };
+}
+
+/** Presentational half of {@link useOperatingHours}. */
+function OperatingHoursCard({ hours: scope }: { hours: OperatingHoursScope }) {
+  const { hours, continuous, cutoff, setContinuous, setCutoff, update, isPending } =
+    scope;
+
   return (
     <SettingsSection
+      icon={<CalendarClock className="h-4 w-4" />}
       title="Operating hours"
       description="Used for day-session auto roll-over and reservations availability."
-      onSave={save}
-      isDirty={isDirty}
-      isPending={isPending}
     >
-      <div className="rounded-lg border bg-gray-50/60 p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">This location is open 24 hours</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Hide the weekly hours table and run continuously. Day sessions
-              roll over at the daily cutoff time.
-            </p>
-          </div>
-          <Switch
-            checked={continuous}
-            onCheckedChange={setContinuous}
-            disabled={isPending}
-          />
-        </div>
-      </div>
+      <ToggleRow
+        label="Open 24 hours"
+        hint="Hide the weekly table and run continuously. Day sessions roll over at the cutoff time below."
+        checked={continuous}
+        onChange={setContinuous}
+        disabled={isPending}
+      />
 
       {continuous ? (
-        <div className="pt-2">
-          <label className="text-xs font-medium text-gray-700">
-            Daily rollover time
-          </label>
-          <p className="text-[11px] text-muted-foreground mb-1.5">
-            Quiet hour when we close and reopen the business day. Required
-            while 24-hour operation is on.
-          </p>
-          <Input
-            type="time"
-            value={cutoff}
-            onChange={(e) => setCutoff(e.target.value)}
-            disabled={isPending}
-            className="max-w-[200px]"
-            required
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <Field
+            label="Daily rollover time"
+            hint="A quiet hour when the business day closes and reopens. Required while 24-hour operation is on."
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="time"
+                mono
+                required
+                prefix={<Clock className="h-3.5 w-3.5" />}
+                value={cutoff}
+                onChange={(e) => setCutoff(e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="overflow-hidden rounded-lg border border-line">
+          <div className="hidden items-center gap-3 border-b border-line bg-canvas px-4 py-2 sm:flex">
+            <span className={`${standaloneLabelClass} w-28 shrink-0`}>Day</span>
+            <span className={`${standaloneLabelClass} w-24 shrink-0`}>Status</span>
+            <span className={standaloneLabelClass}>Opens / closes</span>
+          </div>
           {hours.map((h) => (
             <div
               key={h.dayOfWeek}
-              className="grid grid-cols-12 items-center gap-3 py-1.5 border-b last:border-b-0"
+              className="flex flex-col gap-2.5 border-b border-line px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-3"
             >
-              <span className="col-span-3 text-sm font-medium">
+              <span className="w-28 shrink-0 text-[13px] font-medium text-ink">
                 {DAY_LABELS[h.dayOfWeek]}
               </span>
-              <div className="col-span-3 flex items-center gap-2">
+              <div className="flex w-24 shrink-0 items-center gap-2">
                 <Switch
                   checked={!h.closed}
-                  onCheckedChange={(val) =>
-                    update(h.dayOfWeek, { closed: !val })
-                  }
+                  onCheckedChange={(val) => update(h.dayOfWeek, { closed: !val })}
                   disabled={isPending}
+                  aria-label={`${DAY_LABELS[h.dayOfWeek]} open`}
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   {h.closed ? "Closed" : "Open"}
                 </span>
               </div>
-              <div className="col-span-3">
-                <Input
+              <div className="flex flex-1 items-center gap-2">
+                <ControlInput
                   type="time"
+                  mono
+                  aria-label={`${DAY_LABELS[h.dayOfWeek]} opening time`}
                   value={h.openTime ?? ""}
-                  onChange={(e) =>
-                    update(h.dayOfWeek, { openTime: e.target.value })
-                  }
+                  onChange={(e) => update(h.dayOfWeek, { openTime: e.target.value })}
                   disabled={isPending || h.closed}
                 />
-              </div>
-              <div className="col-span-3">
-                <Input
+                <span className="shrink-0 text-[12px] text-muted-foreground">to</span>
+                <ControlInput
                   type="time"
+                  mono
+                  aria-label={`${DAY_LABELS[h.dayOfWeek]} closing time`}
                   value={h.closeTime ?? ""}
-                  onChange={(e) =>
-                    update(h.dayOfWeek, { closeTime: e.target.value })
-                  }
+                  onChange={(e) => update(h.dayOfWeek, { closeTime: e.target.value })}
                   disabled={isPending || h.closed}
                 />
               </div>
@@ -300,23 +373,5 @@ function OperatingHoursCard({
         </div>
       )}
     </SettingsSection>
-  );
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 const KEYS = [
@@ -49,10 +50,6 @@ export function OrderChannelsPanel({
         icon={<Truck className="h-4 w-4" />}
         title="Channels"
         description="Which fulfilment routes this location accepts."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <ToggleRow
@@ -97,10 +94,6 @@ export function OrderChannelsPanel({
             </span>
           ) : undefined
         }
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Default delivery fee" hint="Added to every delivery order unless overridden.">
@@ -167,10 +160,6 @@ export function OrderChannelsPanel({
         icon={<CalendarClock className="h-4 w-4" />}
         title="Scheduled orders"
         description="Allow customers to place orders for a future time."
-        onSave={p.save}
-        onDiscard={() => p.reset()}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ToggleRow
@@ -203,6 +192,13 @@ export function OrderChannelsPanel({
           </Field>
         </div>
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

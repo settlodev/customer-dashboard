@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { UUID } from "node:crypto";
-import { Loader2 } from "lucide-react";
+import { CalendarClock, Coins, Loader2, Wallet } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+import {
+  ControlInput,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
+import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import { PanelHeader } from "../shared/panel-header";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,16 +35,25 @@ const toForm = (s: PrepaymentSettings): FormState => ({
   defaultExpirationDays: s.defaultExpirationDays,
 });
 
+const ICON = "h-3.5 w-3.5";
+
 /**
  * Per-location customer prepayment configuration. Self-contained — unlike the
  * other settings panels it reads/writes its own Accounts Service endpoint
  * ({@code /api/v1/customer-prepayments/settings}) rather than the shared
  * LocationSettings object.
  */
-export function CustomerPrepaymentsPanel({ locationId }: { locationId: string }) {
+export function CustomerPrepaymentsPanel({
+  locationId,
+  currency,
+}: {
+  locationId: string;
+  /** Shown as the unit on the top-up amounts. */
+  currency?: string | null;
+}) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [baseline, setBaseline] = useState<FormState | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -49,7 +63,7 @@ export function CustomerPrepaymentsPanel({ locationId }: { locationId: string })
     getPrepaymentSettings(locationId as UUID)
       .then((s) => {
         if (cancelled) return;
-        setForm(
+        const next =
           s
             ? toForm(s)
             : {
@@ -58,9 +72,9 @@ export function CustomerPrepaymentsPanel({ locationId }: { locationId: string })
                 minTopupAmount: 0,
                 maxTopupAmount: null,
                 defaultExpirationDays: null,
-              },
-        );
-        setDirty(false);
+              };
+        setForm(next);
+        setBaseline(next);
         setLoading(false);
       })
       .catch(() => {
@@ -74,16 +88,24 @@ export function CustomerPrepaymentsPanel({ locationId }: { locationId: string })
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
-    setDirty(true);
   };
+
+  // Count the fields that actually moved so the save bar reads like the rest.
+  const dirtyCount =
+    form && baseline
+      ? (Object.keys(form) as (keyof FormState)[]).filter(
+          (k) => (form[k] ?? null) !== (baseline[k] ?? null),
+        ).length
+      : 0;
 
   const save = () => {
     if (!form) return;
     startTransition(async () => {
       const result = await updatePrepaymentSettings(locationId as UUID, form);
       if (result.responseType === "success") {
-        if (result.data) setForm(toForm(result.data));
-        setDirty(false);
+        const next = result.data ? toForm(result.data) : form;
+        setForm(next);
+        setBaseline(next);
         toast({ title: "Prepayment settings saved" });
       } else {
         toast({
@@ -104,6 +126,9 @@ export function CustomerPrepaymentsPanel({ locationId }: { locationId: string })
     );
   }
 
+  const d = isPending;
+  const off = !form.enabled;
+
   return (
     <div className="space-y-6">
       <PanelHeader
@@ -112,92 +137,94 @@ export function CustomerPrepaymentsPanel({ locationId }: { locationId: string })
       />
 
       <SettingsSection
+        icon={<Wallet className="h-4 w-4" />}
         title="Prepayments"
         description="Enable prepaid balances and set the limits for top-ups taken at this location."
-        onSave={save}
-        isPending={isPending}
-        isDirty={dirty}
       >
-        <SettingsSwitchRow
-          label="Enable customer prepayments"
-          description="Allow staff to record top-ups and customers to pay with prepaid balance."
-          checked={form.enabled}
-          onChange={(x) => setField("enabled", x)}
-          disabled={isPending}
-        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
+            label="Customer prepayments"
+            hint="Staff can record top-ups and customers can pay from their balance."
+            checked={form.enabled}
+            onChange={(x) => setField("enabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Business-wide credit"
+            hint="Balance funded here can be spent at any location. Off keeps it to this location."
+            checked={form.allowBusinessWide}
+            onChange={(x) => setField("allowBusinessWide", x)}
+            disabled={d || off}
+          />
+        </div>
 
-        {form.enabled && (
-          <>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <Field label="Minimum top-up">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.minTopupAmount ?? ""}
-                  onChange={(e) =>
-                    setField(
-                      "minTopupAmount",
-                      e.target.value === "" ? 0 : Number(e.target.value),
-                    )
-                  }
-                  disabled={isPending}
-                />
-              </Field>
-              <Field label="Maximum top-up (blank = no limit)">
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.maxTopupAmount ?? ""}
-                  onChange={(e) =>
-                    setField(
-                      "maxTopupAmount",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                  disabled={isPending}
-                />
-              </Field>
-              <Field label="Default expiry (days, blank = never)">
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.defaultExpirationDays ?? ""}
-                  onChange={(e) =>
-                    setField(
-                      "defaultExpirationDays",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                  disabled={isPending}
-                />
-              </Field>
-            </div>
-
-            <SettingsSwitchRow
-              label="Allow business-wide credit"
-              description="When on, prepaid balance funded here can be spent at any location of the business. Otherwise it is limited to this location."
-              checked={form.allowBusinessWide}
-              onChange={(x) => setField("allowBusinessWide", x)}
-              disabled={isPending}
-            />
-          </>
-        )}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Minimum top-up" hint="Smallest amount staff may take.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                suffix={currency || undefined}
+                prefix={<Coins className={ICON} />}
+                value={form.minTopupAmount ?? ""}
+                onChange={(e) =>
+                  setField("minTopupAmount", parseOptionalNumber(e.target.value) ?? 0)
+                }
+                placeholder="0"
+                disabled={d || off}
+              />
+            )}
+          </Field>
+          <Field label="Maximum top-up" hint="Leave blank for no ceiling.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="decimal"
+                mono
+                min={0}
+                suffix={currency || undefined}
+                prefix={<Coins className={ICON} />}
+                value={form.maxTopupAmount ?? ""}
+                onChange={(e) =>
+                  setField("maxTopupAmount", parseOptionalNumber(e.target.value))
+                }
+                placeholder="No limit"
+                disabled={d || off}
+              />
+            )}
+          </Field>
+          <Field label="Default expiry" hint="Leave blank and balances never expire.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                suffix="days"
+                prefix={<CalendarClock className={ICON} />}
+                value={form.defaultExpirationDays ?? ""}
+                onChange={(e) =>
+                  setField("defaultExpirationDays", parseOptionalNumber(e.target.value))
+                }
+                placeholder="Never"
+                disabled={d || off}
+              />
+            )}
+          </Field>
+        </div>
       </SettingsSection>
-    </div>
-  );
-}
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+      <SettingsSaveBar
+        dirtyCount={dirtyCount}
+        isPending={isPending}
+        onSave={save}
+        onDiscard={() => baseline && setForm(baseline)}
+      />
     </div>
   );
 }
