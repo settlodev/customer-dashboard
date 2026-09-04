@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, RotateCcw, UserRound } from "lucide-react";
+import { ArrowUpDown, PenLine, RotateCcw, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatDate, formatTime } from "@/lib/format-datetime";
@@ -19,6 +19,7 @@ import {
   PAYMENT_STATUS_PILL,
   PaymentStatus,
   REFUND_PILL,
+  SIGNED_BILL_PILL,
 } from "@/types/orders/type";
 
 const formatMoney = (value: number | null | undefined) => {
@@ -275,11 +276,24 @@ export function buildOrdersColumns({
         // as its own marker rather than replacing it or earning a column of
         // its own, which would sit empty on almost every row.
         const refund = orderRefundBadge(order);
+        // Likewise a signed bill: the order may be CLOSED, but the money is
+        // still owed on the customer's account until settled or written off.
+        const signed = (order.signedAmount ?? 0) > 0;
         return (
           <div className="flex flex-col items-start gap-1">
             <Badge variant="outline" className={ORDER_STATUS_PILL[status] ?? ""}>
               {ORDER_STATUS_LABELS[status] ?? String(status)}
             </Badge>
+            {signed ? (
+              <Badge
+                variant="outline"
+                className={SIGNED_BILL_PILL}
+                title={`Signed bill: ${formatMoney(order.signedAmount)} owed`}
+              >
+                <PenLine className="mr-1 h-3 w-3" />
+                Signed bill
+              </Badge>
+            ) : null}
             {refund ? (
               <Badge
                 variant="outline"
