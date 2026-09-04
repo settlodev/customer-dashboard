@@ -268,6 +268,8 @@ export interface PublicMonthlyProfitLoss {
   endDate: string;
   generatedAt: string;
   currencyCode: string;
+  /** IANA id of the location timezone the statement was generated for, e.g. "Africa/Dar_es_Salaam". */
+  timezone: string | null;
   sections: PlSections;
   grossProfit: number;
   operatingProfit: number;

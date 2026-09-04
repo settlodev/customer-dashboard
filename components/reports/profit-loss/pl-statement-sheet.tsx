@@ -9,13 +9,18 @@ import { isDisplayableImageUrl } from "@/lib/image-url";
 import { cn } from "@/lib/utils";
 import type { PublicMonthlyProfitLoss } from "@/types/reports/type";
 
-const formatGeneratedAt = (iso: string) =>
+// Stamped in the location's own timezone so the page and the email agree
+// ("1 Sept 2026, 06:10 EAT"), not in whatever zone the reader's browser is in.
+// Statements generated before `timezone` was carried fall back to UTC.
+const formatGeneratedAt = (iso: string, timeZone: string) =>
   new Date(iso).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone,
+    timeZoneName: "short",
   });
 
 /**
@@ -112,7 +117,7 @@ export function PlStatementSheet({ report }: { report: PublicMonthlyProfitLoss }
       </div>
 
       <footer className="border-t border-slate-200 px-10 py-6 text-[12px] leading-relaxed text-slate-500">
-        Generated {formatGeneratedAt(report.generatedAt)} from posted journals. Figures are as at
+        Generated {formatGeneratedAt(report.generatedAt, report.timezone ?? "UTC")} from posted journals. Figures are as at
         generation; amounts in brackets are negative.
         {report.liveUrl && (
           <>
