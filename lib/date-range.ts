@@ -11,6 +11,9 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isSameMonth,
+  isSameYear,
+  parseISO,
   startOfMonth,
   startOfWeek,
   subDays,
@@ -80,3 +83,50 @@ export const RANGE_PRESETS: Array<{
   { key: "week", label: "This week" },
   { key: "month", label: "This month" },
 ];
+
+/**
+ * A preset a filter can offer: a stable key (drives the active highlight and
+ * the pending spinner), the pill label, and the range it selects. Pages with
+ * their own vocabulary (the P&L's This month / This year / Last 12 months)
+ * hand a list of these to the shared control instead of the defaults.
+ */
+export interface RangePresetDef {
+  key: string;
+  label: string;
+  range: (now?: Date) => DateRangeValue;
+}
+
+/** The standard preset row every list/report filter shows. */
+export const DEFAULT_RANGE_PRESETS: RangePresetDef[] = RANGE_PRESETS.map((p) => ({
+  key: p.key,
+  label: p.label,
+  range: (now?: Date) => getPresetRange(p.key, now),
+}));
+
+/** Which preset key (if any) a from/to pair corresponds to, for a given preset list. */
+export function detectPresetKey(
+  presets: RangePresetDef[],
+  from: string,
+  to: string,
+): string {
+  for (const p of presets) {
+    const r = p.range();
+    if (r.from === from && r.to === to) return p.key;
+  }
+  return "custom";
+}
+
+/**
+ * Human label for a whole-month range, e.g. "Aug 2026", "Jan – Aug 2026" or
+ * "Jul 2025 – Jun 2026". Used by month-granularity filters where the day
+ * numbers of a range are always the 1st and the last and would only add noise.
+ */
+export function formatMonthRangeLabel(from: string, to: string): string {
+  if (!from || !to) return "Pick months";
+  const f = parseISO(from);
+  const t = parseISO(to);
+  if (isSameMonth(f, t)) return format(f, "MMM yyyy");
+  return isSameYear(f, t)
+    ? `${format(f, "MMM")} – ${format(t, "MMM yyyy")}`
+    : `${format(f, "MMM yyyy")} – ${format(t, "MMM yyyy")}`;
+}

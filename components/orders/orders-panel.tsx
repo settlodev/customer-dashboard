@@ -39,6 +39,16 @@ export interface OrdersKpis {
   grossSales: number;
   /** Count of orders not fully paid. */
   unpaidOrders: number;
+  /**
+   * Customer-ledger buckets, present only on the OMS `/orders/summary`
+   * response (not the Reports overview). Exclusive: ongoing = OPEN and never
+   * signed, signed = still carrying a signed-bill receivable in any status
+   * (`signedAmount` is its total), completed = CLOSED with nothing owed.
+   */
+  ongoingOrders?: number;
+  signedOrders?: number;
+  signedAmount?: number;
+  completedOrders?: number;
 }
 
 interface Props {

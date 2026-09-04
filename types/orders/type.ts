@@ -12,6 +12,14 @@ export enum OrderStatus {
   // never had any items added before being cancelled. EOD purge sweeps
   // them so they don't pollute reports as a real cancellation.
   ABANDONED = "ABANDONED",
+  // Source order whose items were moved into another order by a merge —
+  // not a cancellation, the items live on in the target.
+  MERGED = "MERGED",
+  // Unpaid order written off as a loss (walkout); no revenue recognised.
+  WRITTEN_OFF = "WRITTEN_OFF",
+  // Parked unpaid order deferred for later payment with no customer
+  // attached; resolves to CLOSED or WRITTEN_OFF.
+  DEFERRED = "DEFERRED",
 }
 
 export enum OrderType {
@@ -640,6 +648,9 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.CLOSED]: "Closed",
   [OrderStatus.CANCELLED]: "Cancelled",
   [OrderStatus.ABANDONED]: "Abandoned",
+  [OrderStatus.MERGED]: "Merged",
+  [OrderStatus.WRITTEN_OFF]: "Written off",
+  [OrderStatus.DEFERRED]: "Deferred",
 };
 
 export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
@@ -650,6 +661,12 @@ export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
   [OrderStatus.CANCELLED]:
     "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
   [OrderStatus.ABANDONED]:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  [OrderStatus.MERGED]:
+    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  [OrderStatus.WRITTEN_OFF]:
+    "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+  [OrderStatus.DEFERRED]:
     "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
 };
 
@@ -694,6 +711,14 @@ export const orderRefundBadge = (
  * partial return is amber, the shade the rest of the table gives to "attend to
  * this" rather than "this is a loss".
  */
+/**
+ * Marker for a row still carrying a signed-bill receivable — the order was
+ * put on the customer's account and is owed until settled or written off.
+ * Rides under the status pill like the refund marker.
+ */
+export const SIGNED_BILL_PILL =
+  "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400";
+
 export const REFUND_PILL: Record<"full" | "partial", string> = {
   full: "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
   partial:

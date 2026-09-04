@@ -9,6 +9,7 @@ import {
 } from "@/components/layouts/page-shell";
 import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import NoItems from "@/components/layouts/no-items";
+import { PlExportButton } from "@/components/reports/profit-loss/pl-export-button";
 import { PlMonthlyTable } from "@/components/reports/profit-loss/pl-monthly-table";
 import { PlPeriodControl } from "@/components/reports/profit-loss/pl-period-control";
 import {
@@ -98,7 +99,12 @@ export default async function ProfitLossPage({
       <PageHeader
         title="Profit & loss"
         subtitle={`${rangeLabel}. Revenue minus expenses from posted journals.`}
-        actions={<PlPeriodControl view={view} from={from} to={to} />}
+        actions={
+          <>
+            <PlPeriodControl view={view} from={from} to={to} />
+            <PlExportButton view={view} from={from} to={to} disabled={!report} />
+          </>
+        }
       />
       <PageBody>
         {!report || !kpis ? (

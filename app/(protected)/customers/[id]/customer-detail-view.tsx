@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
+  Activity,
   Bell,
   BellOff,
-  Calendar as CalendarIcon,
   CalendarDays,
+  CircleDollarSign,
   Clock,
   CreditCard,
   FileText,
@@ -14,22 +16,51 @@ import {
   MapPin,
   Phone,
   Receipt,
+  ReceiptText,
   ShoppingBag,
+  Sparkles,
   Star,
+  StickyNote,
   Tag,
   User,
   Wallet,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+
+import {
+  EmptyState,
+  FactGrid,
+  fact,
+  HeroCard,
+  HeroChip,
+  HeroLabel,
+  HeroMeter,
+  HeroValue,
+  HERO_TONE_HEX,
+  PanelCard,
+  RailCard,
+  SegTabs,
+  StatusPill,
+  VList,
+  VRow,
+  type Fact,
+  type HeroTone,
+  type SegTab,
+  type Tone,
+} from "@/components/layouts/order-detail";
+import { KpiCard, KpiStrip } from "@/components/layouts/kpi-strip";
 import { Badge } from "@/components/ui/badge";
-import { TableAvatar } from "@/components/tables/shared/table-avatar";
-import { usePermissions } from "@/context/permissionsContext";
-import { CustomerPrepaidAccountTab } from "@/components/customer/customer-prepaid-account-tab";
-import { DebtorCellAction } from "@/components/tables/debtor/cell-action";
 import { CustomerArInvoicesPanel } from "@/components/customer/customer-ar-invoices-panel";
+import { CustomerInsightsPanel } from "@/components/customer/customer-insights-panel";
+import { CustomerOrdersPanel } from "@/components/customer/customer-orders-panel";
+import { CustomerPrepaidAccountTab } from "@/components/customer/customer-prepaid-account-tab";
+import type { OrdersKpis } from "@/components/orders/orders-panel";
+import { DebtorCellAction } from "@/components/tables/debtor/cell-action";
+import { usePermissions } from "@/context/permissionsContext";
+import { formatDate } from "@/lib/format-datetime";
+import type { CustomerOrderBucket } from "@/lib/orders/customer-order-buckets";
 import {
   AGING_BUCKET_LABELS,
-  AGING_BUCKET_TONES,
+  type AgingBucket,
   type CustomerArBalance,
 } from "@/types/customer-ar/type";
 import type {
@@ -37,12 +68,41 @@ import type {
   CustomerSignedBill,
 } from "@/types/customer-ar-invoice/type";
 import {
-  Customer,
-  CustomerPreference,
-  CUSTOMER_SOURCE_LABELS,
-  CUSTOMER_CREATED_FROM_LABELS,
   ADDRESS_TYPE_LABELS,
+  CUSTOMER_CREATED_FROM_LABELS,
+  CUSTOMER_SEGMENT_LABELS,
+  CUSTOMER_SOURCE_LABELS,
+  type Customer,
+  type CustomerBehaviour,
+  type CustomerInsights,
+  type CustomerPreference,
+  type CustomerPurchaseSummary,
+  type CustomerRank,
+  type CustomerSegment,
 } from "@/types/customer/type";
+import type { Order } from "@/types/orders/type";
+
+// Same shape as the sales-order detail page: a persistent money rail on the
+// left — what the customer owes, who they are, where they stand — and the
+// record's detail behind segmented drill-down tabs on the right. The order
+// ledger leads, because "what has this customer got open with us" is the
+// question the page is opened to answer.
+
+export type CustomerTab =
+  | "orders"
+  | "insights"
+  | "balance"
+  | "prepaid"
+  | "profile";
+
+export function parseCustomerTab(raw: string | undefined): CustomerTab {
+  return raw === "insights" ||
+    raw === "balance" ||
+    raw === "prepaid" ||
+    raw === "profile"
+    ? raw
+    : "orders";
+}
 
 interface Props {
   customer: Customer;
@@ -52,18 +112,100 @@ interface Props {
   signedBills: CustomerSignedBill[];
   /** Consolidated invoices already raised over those bills. */
   arInvoices: CustomerArInvoiceSummary[];
+  /** Reports roll-up: order count, lifetime value, first/last order. */
+  purchase: CustomerPurchaseSummary | null;
+  /** OMS all-time ledger totals with the bucket split; null when unavailable. */
+  ledger: OrdersKpis | null;
+  /**
+   * Reports Service insights at this location — behaviour, rank, monthly
+   * spend, favourites. Null when the service could not be reached.
+   */
+  insights: CustomerInsights | null;
+  orders: {
+    rows: Order[];
+    pageCount: number;
+    pageNo: number;
+    total: number;
+    bucket: CustomerOrderBucket;
+    searching: boolean;
+  };
+  tableMode: boolean;
+  staffNames: Record<string, string>;
+  tableNames: Record<string, string>;
+  currency: string;
+  /** Active tab from `?tab=`; the URL keeps it across list paging. */
+  tab: CustomerTab;
+  preservedParams: Record<string, string | undefined>;
 }
 
-const TABS = [
-  { key: "overview", label: "Overview", icon: User },
-  { key: "loyalty", label: "Loyalty & Credit", icon: Star },
-  { key: "debt", label: "Outstanding balance", icon: Receipt },
-  { key: "prepayments", label: "Prepaid account", icon: Wallet },
-  { key: "addresses", label: "Addresses", icon: MapPin },
-  { key: "preferences", label: "Preferences", icon: Tag },
-] as const;
+// ─── formatting ──────────────────────────────────────────────────────
 
-type TabKey = (typeof TABS)[number]["key"];
+const fmt = (value: number | null | undefined) =>
+  value == null
+    ? "—"
+    : Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
+
+const plural = (n: number, one: string, many = `${one}s`) =>
+  `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+const AGING_HERO_TONE: Record<AgingBucket, HeroTone> = {
+  CURRENT: "warn",
+  DAYS_30: "warn",
+  DAYS_60: "neg",
+  DAYS_90: "neg",
+  DAYS_90_PLUS: "neg",
+};
+
+const AGING_PILL_TONE: Record<AgingBucket, Tone> = {
+  CURRENT: "warn",
+  DAYS_30: "warn",
+  DAYS_60: "neg",
+  DAYS_90: "neg",
+  DAYS_90_PLUS: "neg",
+};
+
+const dim = (label: string) => (
+  <span className="font-medium text-muted-2">{label}</span>
+);
+
+/** "Top 5%" for the location's biggest spenders, "Top half" further down. */
+const rankBand = (rank: CustomerRank) => {
+  const pct = (rank.position / rank.customerCount) * 100;
+  if (pct <= 5) return "top 5%";
+  if (pct <= 10) return "top 10%";
+  if (pct <= 25) return "top quarter";
+  if (pct <= 50) return "top half";
+  return "bottom half";
+};
+
+const SEGMENT_TONE: Record<CustomerSegment, Tone> = {
+  CHAMPION: "pos",
+  LOYAL: "pos",
+  BIG_SPENDER: "pos",
+  NEW: "info",
+  REGULAR: "info",
+  AT_RISK: "warn",
+  CANT_LOSE: "warn",
+  LOST: "neg",
+};
+
+const segmentLabel = (s: string | null | undefined) =>
+  s
+    ? (CUSTOMER_SEGMENT_LABELS[s as CustomerSegment] ??
+      s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()))
+    : null;
+
+/** A 30-day trend as a signed percentage string, or null when flat / unknown. */
+const trendText = (v: number) => {
+  if (!Number.isFinite(v) || Math.abs(v) < 0.005) return null;
+  const pct = Math.round(Math.abs(v) * 100);
+  return `${v > 0 ? "▲" : "▼"} ${pct}%`;
+};
+
+const roundDays = (d: number) =>
+  d >= 10 ? Math.round(d).toString() : (Math.round(d * 10) / 10).toString();
+
+// ─── view ────────────────────────────────────────────────────────────
 
 export function CustomerDetailView({
   customer,
@@ -71,633 +213,783 @@ export function CustomerDetailView({
   arBalance,
   signedBills,
   arInvoices,
+  purchase,
+  ledger,
+  insights,
+  orders,
+  tableMode,
+  staffNames,
+  tableNames,
+  currency,
+  tab: initialTab,
+  preservedParams,
 }: Props) {
-  const [tab, setTab] = useState<TabKey>("overview");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { hasPermission } = usePermissions();
 
-  const memberSince = customer.createdAt
-    ? new Date(customer.createdAt).toLocaleDateString()
-    : "—";
+  // Local state switches the panel instantly; the URL is updated in place
+  // (no navigation, no server round-trip) so the tab survives the table's
+  // own `?page` / `?search` replaces and a reload lands on the same tab.
+  const [tab, setTab] = useState<CustomerTab>(initialTab);
+  useEffect(() => setTab(initialTab), [initialTab]);
+  const selectTab = (next: CustomerTab) => {
+    setTab(next);
+    const qs = new URLSearchParams(searchParams?.toString());
+    if (next === "orders") qs.delete("tab");
+    else qs.set("tab", next);
+    const query = qs.toString();
+    window.history.replaceState(null, "", `${pathname}${query ? `?${query}` : ""}`);
+  };
+
+  const canSeePrepaid = hasPermission("customer_prepayments:view");
+  const outstanding = arBalance?.outstandingBalance ?? 0;
+
+  const tabs: SegTab<CustomerTab>[] = [
+    {
+      id: "orders",
+      label: "Orders",
+      icon: ReceiptText,
+      count: ledger?.totalOrders || undefined,
+    },
+    { id: "insights", label: "Insights", icon: Sparkles },
+    {
+      id: "balance",
+      label: "Outstanding",
+      icon: Receipt,
+      count: outstanding > 0 ? arBalance?.outstandingOrderCount : undefined,
+    },
+    ...(canSeePrepaid
+      ? [{ id: "prepaid" as const, label: "Prepaid account", icon: Wallet }]
+      : []),
+    { id: "profile", label: "Profile", icon: User },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* ── Summary KPIs ──────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-line bg-line">
-        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-2 md:grid-cols-4">
-          <SummaryTile
-            icon={<Star className="h-3 w-3" />}
-            label="Loyalty"
-            value={customer.loyaltyPoints.toLocaleString()}
-            unit="pts"
-            delta={
-              customer.loyaltyPointsCarryOver > 0
-                ? `+${customer.loyaltyPointsCarryOver.toLocaleString()} carry`
-                : undefined
-            }
-            tone={customer.loyaltyPoints > 0 ? "pos" : "neutral"}
+    <div className="flex flex-col gap-4">
+      <SpendStrip
+        customer={customer}
+        purchase={purchase}
+        ledger={ledger}
+        rank={insights?.rank ?? null}
+        currency={currency}
+      />
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="flex flex-col gap-3.5 lg:sticky lg:top-4">
+          <DebtHero
+            customer={customer}
+            arBalance={arBalance}
+            currency={currency}
           />
-          <SummaryTile
-            icon={<CreditCard className="h-3 w-3" />}
-            label="Credit limit"
-            value={
-              customer.creditLimit != null
-                ? customer.creditLimit.toLocaleString()
-                : "—"
-            }
-            unit={customer.creditLimit != null ? "TZS" : undefined}
-          />
-          <SummaryTile
-            icon={
-              customer.allowNotifications ? (
-                <Bell className="h-3 w-3" />
-              ) : (
-                <BellOff className="h-3 w-3" />
-              )
-            }
-            label="Notifications"
-            value={customer.allowNotifications ? "On" : "Off"}
-            tone={customer.allowNotifications ? "pos" : "neutral"}
-          />
-          <SummaryTile
-            icon={<CalendarDays className="h-3 w-3" />}
-            label="Member since"
-            value={memberSince}
-          />
-        </div>
-      </div>
+          <RailCard icon={<Activity className="h-3.5 w-3.5" />} title="Behaviour">
+            <BehaviourList
+              behaviour={insights?.behaviour ?? null}
+              reachable={insights != null}
+              currency={currency}
+            />
+          </RailCard>
+          <RailCard icon={<Phone className="h-3.5 w-3.5" />} title="Contact">
+            <ContactList customer={customer} />
+          </RailCard>
+          <RailCard icon={<Star className="h-3.5 w-3.5" />} title="Standing">
+            <StandingList customer={customer} currency={currency} />
+          </RailCard>
+        </aside>
 
-      {/* ── Tabs (segmented underline — matches staff detail) ── */}
-      <div className="overflow-x-auto rounded-xl border border-line bg-card">
-        <div className="flex min-w-max gap-0 border-b border-line bg-surface px-2">
-          {TABS.filter(
-            (t) =>
-              t.key !== "prepayments" ||
-              hasPermission("customer_prepayments:view"),
-          ).map((t) => {
-            const Icon = t.icon;
-            const isActive = tab === t.key;
-            let badge: string | null = null;
-            if (t.key === "addresses" && customer.addresses?.length > 0) {
-              badge = String(customer.addresses.length);
-            }
-            if (t.key === "preferences" && preferences.length > 0) {
-              badge = String(preferences.length);
-            }
-            if (t.key === "debt" && (arBalance?.outstandingBalance ?? 0) > 0) {
-              badge = String(arBalance!.outstandingOrderCount);
-            }
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                role="tab"
-                aria-selected={isActive}
-                className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-[12.5px] font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-ink"
-                    : "border-transparent text-muted-foreground hover:text-ink-2"
-                }`}
-              >
-                <Icon
-                  className={`h-3.5 w-3.5 ${
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  }`}
-                />
-                {t.label}
-                {badge && (
-                  <span
-                    className={`rounded-[3px] px-1.5 font-mono text-[9.5px] tracking-[0.02em] ${
-                      isActive
-                        ? "border border-line bg-card text-ink-3"
-                        : "bg-canvas text-muted-foreground"
-                    }`}
-                  >
-                    {badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Tab content ───────────────────────────────────────── */}
-      {tab === "overview" && <OverviewTab customer={customer} />}
-      {tab === "loyalty" && <LoyaltyTab customer={customer} />}
-      {tab === "debt" && (
-        <DebtTab
-          arBalance={arBalance}
-          currency={arBalance?.currency ?? "TZS"}
-          customerId={customer.id}
-          signedBills={signedBills}
-          arInvoices={arInvoices}
-        />
-      )}
-      {tab === "prepayments" && (
-        <CustomerPrepaidAccountTab
-          customerId={customer.id}
-          locationId={customer.locationId}
-        />
-      )}
-      {tab === "addresses" && <AddressesTab customer={customer} />}
-      {tab === "preferences" && <PreferencesTab preferences={preferences} />}
-    </div>
-  );
-}
-
-// ── Overview ────────────────────────────────────────────────────────
-
-function OverviewTab({ customer }: { customer: Customer }) {
-  const fullName = `${customer.firstName} ${customer.lastName}`;
-
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      {/* Identity panel */}
-      <Card className="lg:col-span-1">
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center gap-3">
-            <TableAvatar name={fullName} seed={customer.id} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-ink">
-                {fullName}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {customer.customerAccountNumber || "—"}
-              </p>
-            </div>
-          </div>
-
-          {customer.customerGroupName && (
-            <div className="flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-2">
-              <Tag className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[12px] font-medium text-ink">
-                {customer.customerGroupName}
-              </span>
-            </div>
-          )}
-
-          {customer.notes && (
-            <div className="space-y-1">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Staff notes
-              </p>
-              <p className="whitespace-pre-wrap text-sm text-ink-2">
-                {customer.notes}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Personal + identification */}
-      <Card className="lg:col-span-2">
-        <CardContent className="space-y-4 pt-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold">
-            <User className="h-4 w-4 text-muted-foreground" />
-            Profile
-          </h3>
-
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow
-                icon={Phone}
-                label="Phone"
-                value={customer.phoneNumber}
+        <main className="flex min-w-0 flex-col gap-3.5">
+          <SegTabs tabs={tabs} active={tab} onSelect={selectTab} />
+          <div>
+            {tab === "orders" && (
+              <CustomerOrdersPanel
+                basePath={`/customers/${customer.id}`}
+                rows={orders.rows}
+                pageCount={orders.pageCount}
+                pageNo={orders.pageNo}
+                total={orders.total}
+                bucket={orders.bucket}
+                searching={orders.searching}
+                ledger={ledger}
+                tableMode={tableMode}
+                staffNames={staffNames}
+                tableNames={tableNames}
+                currency={currency}
+                preservedParams={preservedParams}
               />
-              <DetailRow icon={Mail} label="Email" value={customer.email} />
-              <DetailRow label="Gender" value={customer.gender} />
-              <DetailRow
-                icon={CalendarIcon}
-                label="Date of birth"
-                value={
-                  customer.dateOfBirth
-                    ? new Date(customer.dateOfBirth).toLocaleDateString()
-                    : null
-                }
+            )}
+            {tab === "insights" && (
+              <CustomerInsightsPanel insights={insights} currency={currency} />
+            )}
+            {tab === "balance" && (
+              <OutstandingPanel
+                customer={customer}
+                arBalance={arBalance}
+                signedBills={signedBills}
+                arInvoices={arInvoices}
+                currency={arBalance?.currency ?? currency}
               />
-              <DetailRow icon={MapPin} label="Region" value={customer.region} />
-              <DetailRow
-                label="Source"
-                value={
-                  customer.source
-                    ? CUSTOMER_SOURCE_LABELS[customer.source]
-                    : null
-                }
+            )}
+            {tab === "prepaid" && canSeePrepaid && (
+              <CustomerPrepaidAccountTab
+                customerId={customer.id}
+                locationId={customer.locationId}
               />
-              <DetailRow
-                label="Created from"
-                value={
-                  customer.createdFrom
-                    ? CUSTOMER_CREATED_FROM_LABELS[customer.createdFrom]
-                    : null
-                }
-              />
-              <DetailRow
-                icon={customer.allowNotifications ? Bell : BellOff}
-                label="Notifications"
-                value={customer.allowNotifications ? "Enabled" : "Disabled"}
-              />
-              <DetailRow
-                icon={IdCard}
-                label="Identifier"
-                value={
-                  customer.identifier ? (
-                    <span className="font-mono text-[11px] tracking-[0.02em]">
-                      {customer.identifier}
-                    </span>
-                  ) : null
-                }
-              />
-            </dl>
-          </div>
-
-          <h3 className="mt-2 flex items-center gap-2 text-sm font-semibold">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Identification
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-line bg-line">
-            <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-              <DetailRow label="ID type" value={customer.idType} />
-              <DetailRow label="ID number" value={customer.idNumber} />
-              <DetailRow label="TIN number" value={customer.tinNumber} />
-              <DetailRow label="VRN" value={customer.vrn} />
-            </dl>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ── Loyalty & Credit ────────────────────────────────────────────────
-
-function LoyaltyTab({ customer }: { customer: Customer }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Star className="h-4 w-4 text-muted-foreground" />
-              Loyalty points
-            </h3>
-            <Badge
-              variant={customer.loyaltyPoints > 0 ? "pos" : "soft"}
-              className="text-[10.5px]"
-            >
-              {customer.loyaltyPoints > 0 ? "Earning" : "No activity"}
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[28px] font-semibold leading-none tracking-[-0.025em] text-ink tabular-nums">
-                {customer.loyaltyPoints.toLocaleString()}
-              </span>
-              <span className="font-mono text-[11px] text-muted-foreground">
-                pts
-              </span>
-            </div>
-            {customer.loyaltyPointsCarryOver > 0 && (
-              <p className="text-[12px] text-muted-foreground">
-                Plus{" "}
-                <span className="font-mono tabular-nums text-ink-2">
-                  {customer.loyaltyPointsCarryOver.toLocaleString()}
-                </span>{" "}
-                carried over from prior cycles
-              </p>
+            )}
+            {tab === "profile" && (
+              <ProfilePanel customer={customer} preferences={preferences} />
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Credit limit
-            </h3>
-            <Badge
-              variant={customer.creditLimit != null ? "soft" : "outline"}
-              className="text-[10.5px]"
-            >
-              {customer.creditLimit != null ? "Set" : "Not set"}
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[28px] font-semibold leading-none tracking-[-0.025em] text-ink tabular-nums">
-                {customer.creditLimit != null
-                  ? customer.creditLimit.toLocaleString()
-                  : "—"}
-              </span>
-              {customer.creditLimit != null && (
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  TZS
-                </span>
-              )}
-            </div>
-            <p className="text-[12px] text-muted-foreground">
-              Maximum balance allowed across credit-sale orders.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </main>
+      </div>
     </div>
   );
 }
 
-// ── Outstanding balance (AR / debt) ────────────────────────────────
+// ─── KPI strip ───────────────────────────────────────────────────────
 
-function DebtTab({
+function SpendStrip({
+  customer,
+  purchase,
+  ledger,
+  rank,
+  currency,
+}: {
+  customer: Customer;
+  purchase: CustomerPurchaseSummary | null;
+  ledger: OrdersKpis | null;
+  rank: CustomerRank | null;
+  currency: string;
+}) {
+  const orderCount = ledger?.totalOrders ?? purchase?.orderCount ?? 0;
+  const ongoing = ledger?.ongoingOrders ?? 0;
+  const signed = ledger?.signedOrders ?? 0;
+  const ledgerDelta =
+    ongoing > 0 || signed > 0
+      ? [
+          ongoing > 0 ? `${ongoing.toLocaleString()} ongoing` : null,
+          signed > 0 ? `${signed.toLocaleString()} signed` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : orderCount > 0
+        ? "All settled"
+        : undefined;
+  const lastOrder = formatDate(purchase?.lastOrderDate);
+  const firstOrder = formatDate(purchase?.firstOrderDate);
+
+  return (
+    <KpiStrip cols={5}>
+      <KpiCard
+        icon={<CircleDollarSign className="h-3 w-3" />}
+        label="Lifetime spend"
+        value={purchase && purchase.lifetimeValue > 0 ? fmt(purchase.lifetimeValue) : "—"}
+        unit={purchase && purchase.lifetimeValue > 0 ? currency : undefined}
+        delta={
+          rank && rank.customerCount > 0
+            ? `#${rank.position.toLocaleString()} of ${rank.customerCount.toLocaleString()} here · ${rankBand(rank)}`
+            : purchase && purchase.orderCount > 0
+              ? `Across ${plural(purchase.orderCount, "order")}`
+              : "No revenue yet"
+        }
+        deltaTone={rank && rank.position <= Math.max(1, rank.customerCount * 0.1) ? "pos" : "neutral"}
+      />
+      <KpiCard
+        icon={<ReceiptText className="h-3 w-3" />}
+        label="Orders"
+        value={orderCount > 0 ? orderCount.toLocaleString() : "—"}
+        delta={ledgerDelta}
+        deltaTone={signed > 0 ? "neg" : "neutral"}
+      />
+      <KpiCard
+        icon={<ShoppingBag className="h-3 w-3" />}
+        label="Average order"
+        value={
+          purchase && purchase.averageOrderValue > 0
+            ? fmt(purchase.averageOrderValue)
+            : "—"
+        }
+        unit={purchase && purchase.averageOrderValue > 0 ? currency : undefined}
+        deltaTone="neutral"
+      />
+      <KpiCard
+        icon={<CalendarDays className="h-3 w-3" />}
+        label="Last order"
+        value={lastOrder || "—"}
+        delta={firstOrder ? `First ${firstOrder}` : undefined}
+        deltaTone="neutral"
+      />
+      <KpiCard
+        icon={<Star className="h-3 w-3" />}
+        label="Loyalty"
+        value={customer.loyaltyPoints.toLocaleString()}
+        unit="pts"
+        delta={
+          customer.loyaltyPointsCarryOver > 0
+            ? `+${customer.loyaltyPointsCarryOver.toLocaleString()} carried over`
+            : undefined
+        }
+        deltaTone={customer.loyaltyPoints > 0 ? "pos" : "neutral"}
+      />
+    </KpiStrip>
+  );
+}
+
+// ─── money rail ──────────────────────────────────────────────────────
+
+function DebtHero({
+  customer,
   arBalance,
   currency,
-  customerId,
-  signedBills,
-  arInvoices,
 }: {
+  customer: Customer;
   arBalance: CustomerArBalance | null;
   currency: string;
-  customerId: string;
-  signedBills: CustomerSignedBill[];
-  arInvoices: CustomerArInvoiceSummary[];
 }) {
-  const invoicesPanel = (
-    <CustomerArInvoicesPanel
-      customerId={customerId}
-      currency={currency}
-      signedBills={signedBills}
-      invoices={arInvoices}
-    />
-  );
-
-  // No balance still shows the panel: past invoices belong here, and an
-  // empty open-orders table is the clearest way to say "nothing owed".
-  if (!arBalance || arBalance.outstandingBalance <= 0) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Receipt className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              No outstanding balance. Credit-sale orders and unsettled charges
-              for this customer will show up here.
-            </p>
-          </CardContent>
-        </Card>
-        {invoicesPanel}
-      </div>
-    );
-  }
-
-  const formatDate = (iso?: string | null) =>
-    iso ? new Date(iso).toLocaleDateString() : null;
+  const owed = arBalance?.outstandingBalance ?? 0;
+  const cur = arBalance?.currency ?? currency;
+  const hasDebt = owed > 0;
+  const limit = customer.creditLimit ?? 0;
+  const tone: HeroTone =
+    hasDebt && arBalance ? AGING_HERO_TONE[arBalance.agingBucket] : "pos";
+  const usedPct = limit > 0 ? Math.min(100, (owed / limit) * 100) : 0;
+  const oldest = formatDate(arBalance?.oldestUnsettledAt);
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="lg:col-span-2">
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Receipt className="h-4 w-4 text-muted-foreground" />
-                Outstanding balance
-              </h3>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    AGING_BUCKET_TONES[arBalance.agingBucket]
-                  }`}
-                >
-                  {AGING_BUCKET_LABELS[arBalance.agingBucket]}
-                </span>
-                <DebtorCellAction data={arBalance} />
-              </div>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[28px] font-semibold leading-none tracking-[-0.025em] text-neg tabular-nums">
-                {arBalance.outstandingBalance.toLocaleString()}
+    <HeroCard>
+      <div className="flex items-center justify-between gap-3">
+        <HeroLabel>Outstanding balance</HeroLabel>
+        <HeroChip tone={tone}>
+          {hasDebt && arBalance
+            ? AGING_BUCKET_LABELS[arBalance.agingBucket]
+            : "Nothing owed"}
+        </HeroChip>
+      </div>
+      <HeroValue value={fmt(owed)} unit={cur} />
+      {limit > 0 ? (
+        <HeroMeter
+          pct={usedPct}
+          color={HERO_TONE_HEX[hasDebt ? tone : "pos"]}
+          left={`${Math.round(usedPct)}% of credit limit`}
+          right={`${fmt(Math.max(limit - owed, 0))} ${cur} available`}
+        />
+      ) : null}
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10.5px] text-white/70">
+        {hasDebt && arBalance ? (
+          <>
+            <span>
+              <span className="font-semibold text-white">
+                {plural(arBalance.outstandingOrderCount, "signed bill")}
               </span>
-              <span className="font-mono text-[11px] text-muted-foreground">
-                {arBalance.currency}
-              </span>
-            </div>
-            <p className="text-[12px] text-muted-foreground">
-              Owed across {arBalance.outstandingOrderCount}{" "}
-              {arBalance.outstandingOrderCount === 1 ? "order" : "orders"} ·{" "}
-              {arBalance.daysOutstanding}{" "}
-              {arBalance.daysOutstanding === 1 ? "day" : "days"} outstanding
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-              Charges
-            </h3>
-            <div className="overflow-hidden rounded-lg border border-line bg-line">
-              <dl className="grid grid-cols-1 gap-px bg-line">
-                <DetailRow
-                  label="Total charged"
-                  value={`${arBalance.totalCharged.toLocaleString()} ${arBalance.currency}`}
-                />
-                <DetailRow
-                  label="Total settled"
-                  value={`${arBalance.totalSettled.toLocaleString()} ${arBalance.currency}`}
-                />
-                <DetailRow
-                  label="Open orders"
-                  value={arBalance.outstandingOrderCount.toString()}
-                />
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              Timeline
-            </h3>
-            <div className="overflow-hidden rounded-lg border border-line bg-line">
-              <dl className="grid grid-cols-1 gap-px bg-line">
-                <DetailRow
-                  label="Oldest unsettled"
-                  value={formatDate(arBalance.oldestUnsettledAt)}
-                />
-                <DetailRow
-                  label="Last charge"
-                  value={formatDate(arBalance.lastChargeAt)}
-                />
-                <DetailRow
-                  label="Last settlement"
-                  value={formatDate(arBalance.lastSettlementAt)}
-                />
-              </dl>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      {invoicesPanel}
-    </div>
-  );
-}
-
-// ── Addresses ───────────────────────────────────────────────────────
-
-function AddressesTab({ customer }: { customer: Customer }) {
-  const addresses = customer.addresses ?? [];
-
-  if (addresses.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <MapPin className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No addresses on file. Capture one when you next take an order or
-            reservation.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {addresses.map((addr) => (
-        <Card key={addr.id as string}>
-          <CardContent className="space-y-2 pt-6">
-            <div className="flex items-center justify-between gap-2">
-              <Badge variant="soft" className="text-[10.5px]">
-                {ADDRESS_TYPE_LABELS[addr.addressType] ?? addr.addressType}
-              </Badge>
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <p className="whitespace-pre-wrap text-sm text-ink-2">
-              {addr.addressLine}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ── Preferences ─────────────────────────────────────────────────────
-
-function PreferencesTab({
-  preferences,
-}: {
-  preferences: CustomerPreference[];
-}) {
-  if (preferences.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Tag className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No preferences captured yet. Staff can record dietary, seating, or
-            communication preferences over time.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="space-y-3 pt-6">
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Tag className="h-4 w-4 text-muted-foreground" />
-          Saved preferences
-        </h3>
-        <div className="overflow-hidden rounded-lg border border-line bg-line">
-          <dl className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
-            {preferences.map((pref) => (
-              <DetailRow
-                key={pref.id as string}
-                label={pref.preferenceKey}
-                value={pref.preferenceValue}
-              />
-            ))}
-          </dl>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-function SummaryTile({
-  icon,
-  label,
-  value,
-  unit,
-  delta,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  unit?: string;
-  delta?: string;
-  tone?: "pos" | "neg" | "neutral";
-}) {
-  const toneClass =
-    tone === "pos"
-      ? "text-pos"
-      : tone === "neg"
-        ? "text-neg"
-        : "text-muted-foreground";
-  return (
-    <div className="bg-card px-4 py-4 md:px-5">
-      <div className="mb-2 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-        <span className="opacity-70">{icon}</span>
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="flex items-baseline gap-1.5 text-[20px] font-semibold leading-none tracking-[-0.025em] text-ink tabular-nums">
-        <span>{value}</span>
-        {unit && (
-          <span className="font-mono text-[11px] font-normal tracking-[0.02em] text-muted-foreground">
-            {unit}
+            </span>
+            <span>
+              <span className="font-semibold text-white">
+                {plural(arBalance.daysOutstanding, "day")}
+              </span>{" "}
+              outstanding
+            </span>
+            {oldest ? <span>Oldest {oldest}</span> : null}
+          </>
+        ) : (
+          <span>
+            {limit > 0
+              ? "No signed bills on the account"
+              : "No credit limit set · no signed bills on the account"}
           </span>
         )}
       </div>
-      {delta && (
-        <div
-          className={`mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] tabular-nums ${toneClass}`}
-        >
-          {delta}
-        </div>
-      )}
+    </HeroCard>
+  );
+}
+
+function BehaviourList({
+  behaviour,
+  reachable,
+  currency,
+}: {
+  behaviour: CustomerBehaviour | null;
+  reachable: boolean;
+  currency: string;
+}) {
+  if (!behaviour) {
+    return (
+      <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+        {reachable
+          ? "Not scored yet. The nightly analytics run scores a customer once they have bought at this location."
+          : "Behaviour unavailable — the analytics service could not be reached."}
+      </p>
+    );
+  }
+
+  const seg = behaviour.segment ?? "";
+  const tone: Tone = SEGMENT_TONE[seg as CustomerSegment] ?? "muted";
+  const cadence = behaviour.avgDaysBetweenOrders;
+  const nextIn = behaviour.predictedNextOrderDays;
+  const since = behaviour.daysSinceLastOrder;
+  const overdue = nextIn > 0 && since > nextIn;
+  const spend = trendText(behaviour.spendTrend30d);
+  const visits = trendText(behaviour.frequencyTrend30d);
+
+  // Channel mix: the two biggest shares that are actually non-zero.
+  const channels = [
+    { label: "Dine-in", v: behaviour.pctDineIn },
+    { label: "Takeaway", v: behaviour.pctTakeaway },
+    { label: "Delivery", v: behaviour.pctDelivery },
+  ]
+    .filter((c) => c.v > 0)
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 2)
+    .map((c) => `${c.label} ${Math.round(c.v)}%`)
+    .join(" · ");
+
+  return (
+    <>
+      <VList>
+        <VRow
+          label="Segment"
+          value={
+            <span className="inline-flex items-center gap-1.5">
+              <StatusPill tone={tone} dot>
+                {segmentLabel(seg) ?? "Unscored"}
+              </StatusPill>
+              {behaviour.atRisk && seg !== "AT_RISK" ? (
+                <StatusPill tone="warn">At risk</StatusPill>
+              ) : null}
+            </span>
+          }
+        />
+        <VRow
+          label="Visits"
+          value={
+            cadence > 0
+              ? `Every ~${roundDays(cadence)} days`
+              : behaviour.lifetimeOrders > 0
+                ? dim("One visit so far")
+                : dim("—")
+          }
+        />
+        <VRow
+          label="Last seen"
+          value={
+            since === 0
+              ? "Today"
+              : `${since.toLocaleString()} ${since === 1 ? "day" : "days"} ago`
+          }
+        />
+        <VRow
+          label="Next expected"
+          value={
+            nextIn > 0 ? (
+              overdue ? (
+                <span className="text-warn">
+                  Overdue by {roundDays(since - nextIn)} days
+                </span>
+              ) : (
+                `In ~${roundDays(Math.max(nextIn - since, 0))} days`
+              )
+            ) : (
+              dim("—")
+            )
+          }
+        />
+        <VRow
+          label="30-day spend"
+          value={
+            spend ? (
+              <span className={behaviour.spendTrend30d > 0 ? "text-pos" : "text-neg"}>
+                {spend}
+              </span>
+            ) : (
+              dim("Flat")
+            )
+          }
+        />
+        <VRow
+          label="30-day visits"
+          value={
+            visits ? (
+              <span className={behaviour.frequencyTrend30d > 0 ? "text-pos" : "text-neg"}>
+                {visits}
+              </span>
+            ) : (
+              dim("Flat")
+            )
+          }
+        />
+        <VRow
+          label="Basket"
+          value={
+            behaviour.avgBasketValue > 0 ? (
+              <span className="tabular-nums">
+                {behaviour.avgBasketSize > 0
+                  ? `${roundDays(behaviour.avgBasketSize)} items · `
+                  : ""}
+                {fmt(behaviour.avgBasketValue)}{" "}
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {currency}
+                </span>
+              </span>
+            ) : (
+              dim("—")
+            )
+          }
+        />
+        <VRow
+          label="Discounts"
+          value={
+            behaviour.ordersWithDiscountPct > 0
+              ? `${Math.round(behaviour.ordersWithDiscountPct)}% of orders`
+              : dim("None")
+          }
+        />
+        {channels ? <VRow label="Channel" value={channels} /> : null}
+      </VList>
+      <p className="mt-3 font-mono text-[10.5px] text-muted-foreground">
+        As of {formatDate(behaviour.asOf) || "—"} · at this location
+      </p>
+    </>
+  );
+}
+
+function ContactList({ customer }: { customer: Customer }) {
+  const v = (value?: string | null) => (value?.trim() ? value : dim("—"));
+  return (
+    <VList>
+      <VRow label="Phone" value={v(customer.phoneNumber)} />
+      <VRow label="Email" value={v(customer.email)} />
+      <VRow label="Region" value={v(customer.region)} />
+      <VRow label="Group" value={v(customer.customerGroupName)} />
+      <VRow
+        label="Account no."
+        value={
+          customer.customerAccountNumber ? (
+            <span className="font-mono text-[11.5px] tracking-[0.02em]">
+              {customer.customerAccountNumber}
+            </span>
+          ) : (
+            dim("—")
+          )
+        }
+      />
+      <VRow
+        label="Member since"
+        value={formatDate(customer.createdAt) || dim("—")}
+      />
+    </VList>
+  );
+}
+
+function StandingList({
+  customer,
+  currency,
+}: {
+  customer: Customer;
+  currency: string;
+}) {
+  return (
+    <VList>
+      <VRow
+        label="Status"
+        value={
+          <Badge variant={customer.active ? "pos" : "soft"}>
+            {customer.active ? "Active" : "Inactive"}
+          </Badge>
+        }
+      />
+      <VRow
+        label="Credit limit"
+        value={
+          customer.creditLimit != null ? (
+            <span className="tabular-nums">
+              {fmt(customer.creditLimit)}{" "}
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {currency}
+              </span>
+            </span>
+          ) : (
+            dim("Not set")
+          )
+        }
+      />
+      <VRow
+        label="Loyalty"
+        value={
+          <span className="tabular-nums">
+            {customer.loyaltyPoints.toLocaleString()}{" "}
+            <span className="font-mono text-[11px] text-muted-foreground">
+              pts
+            </span>
+          </span>
+        }
+      />
+      <VRow
+        label="Notifications"
+        value={
+          <span className="inline-flex items-center gap-1.5">
+            {customer.allowNotifications ? (
+              <Bell className="h-3 w-3 text-pos" />
+            ) : (
+              <BellOff className="h-3 w-3 text-muted-foreground" />
+            )}
+            {customer.allowNotifications ? "On" : "Off"}
+          </span>
+        }
+      />
+      <VRow
+        label="Source"
+        value={
+          customer.source
+            ? (CUSTOMER_SOURCE_LABELS[customer.source] ?? customer.source)
+            : dim("—")
+        }
+      />
+      <VRow
+        label="No-shows"
+        value={
+          customer.noShowCount > 0 ? (
+            <span className="tabular-nums text-warn">
+              {customer.noShowCount.toLocaleString()}
+            </span>
+          ) : (
+            dim("None")
+          )
+        }
+      />
+    </VList>
+  );
+}
+
+// ─── Outstanding balance ─────────────────────────────────────────────
+
+function OutstandingPanel({
+  customer,
+  arBalance,
+  signedBills,
+  arInvoices,
+  currency,
+}: {
+  customer: Customer;
+  arBalance: CustomerArBalance | null;
+  signedBills: CustomerSignedBill[];
+  arInvoices: CustomerArInvoiceSummary[];
+  currency: string;
+}) {
+  const owed = arBalance?.outstandingBalance ?? 0;
+  const hasDebt = !!arBalance && owed > 0;
+
+  const money = (n: number | null | undefined) =>
+    n != null ? (
+      <span className="tabular-nums">
+        {fmt(n)}{" "}
+        <span className="font-mono text-[11px] font-medium text-muted-foreground">
+          {currency}
+        </span>
+      </span>
+    ) : null;
+
+  const facts: Fact[] = arBalance
+    ? [
+        {
+          label: "Outstanding",
+          icon: <Receipt className="h-3 w-3" />,
+          badge: (
+            <StatusPill tone={hasDebt ? "neg" : "pos"} dot>
+              {hasDebt ? `${fmt(owed)} ${currency}` : "Nothing owed"}
+            </StatusPill>
+          ),
+        },
+        {
+          label: "Aging",
+          icon: <Clock className="h-3 w-3" />,
+          badge: hasDebt ? (
+            <StatusPill tone={AGING_PILL_TONE[arBalance.agingBucket]}>
+              {AGING_BUCKET_LABELS[arBalance.agingBucket]}
+            </StatusPill>
+          ) : (
+            <span className="text-[13px] font-medium text-muted-2">—</span>
+          ),
+        },
+        fact(
+          "Signed bills",
+          hasDebt ? arBalance.outstandingOrderCount.toLocaleString() : null,
+          <FileText className="h-3 w-3" />,
+        ),
+        fact(
+          "Days outstanding",
+          hasDebt ? arBalance.daysOutstanding.toLocaleString() : null,
+          <CalendarDays className="h-3 w-3" />,
+        ),
+        fact("Total charged", money(arBalance.totalCharged)),
+        fact("Total settled", money(arBalance.totalSettled)),
+        fact("Oldest unsettled", formatDate(arBalance.oldestUnsettledAt)),
+        fact("Last charge", formatDate(arBalance.lastChargeAt)),
+        fact("Last settlement", formatDate(arBalance.lastSettlementAt)),
+        fact(
+          "Credit limit",
+          customer.creditLimit != null ? money(customer.creditLimit) : null,
+          <CreditCard className="h-3 w-3" />,
+        ),
+      ]
+    : [];
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <PanelCard
+        icon={<Receipt className="h-3.5 w-3.5" />}
+        title="Outstanding balance"
+        actions={hasDebt ? <DebtorCellAction data={arBalance} /> : undefined}
+      >
+        {arBalance ? (
+          <FactGrid rows={facts} cols={2} />
+        ) : (
+          <EmptyState
+            icon={<Receipt className="h-5 w-5" />}
+            title="Nothing owed"
+            sub="Signed bills and unsettled charges for this customer will show up here."
+          />
+        )}
+      </PanelCard>
+
+      <CustomerArInvoicesPanel
+        customerId={customer.id}
+        currency={currency}
+        signedBills={signedBills}
+        invoices={arInvoices}
+      />
     </div>
   );
 }
 
-function DetailRow({
-  label,
-  value,
-  icon: Icon,
+// ─── Profile ─────────────────────────────────────────────────────────
+
+function ProfilePanel({
+  customer,
+  preferences,
 }: {
-  label: string;
-  value: React.ReactNode;
-  icon?: React.ComponentType<{ className?: string }>;
+  customer: Customer;
+  preferences: CustomerPreference[];
 }) {
-  const isEmpty =
-    value == null || (typeof value === "string" && value.trim() === "");
+  const fullName =
+    customer.fullName?.trim() ||
+    `${customer.firstName} ${customer.lastName}`.trim();
+  const addresses = customer.addresses ?? [];
+
+  const profile: Fact[] = [
+    fact("Full name", fullName, <User className="h-3 w-3" />),
+    fact("Gender", customer.gender),
+    fact(
+      "Date of birth",
+      formatDate(customer.dateOfBirth),
+      <CalendarDays className="h-3 w-3" />,
+    ),
+    fact("Phone", customer.phoneNumber, <Phone className="h-3 w-3" />),
+    fact("Email", customer.email, <Mail className="h-3 w-3" />),
+    fact("Region", customer.region, <MapPin className="h-3 w-3" />),
+    fact(
+      "Source",
+      customer.source
+        ? (CUSTOMER_SOURCE_LABELS[customer.source] ?? customer.source)
+        : null,
+    ),
+    fact(
+      "Created from",
+      customer.createdFrom
+        ? (CUSTOMER_CREATED_FROM_LABELS[customer.createdFrom] ??
+          customer.createdFrom)
+        : null,
+    ),
+    fact("Identifier", customer.identifier, <IdCard className="h-3 w-3" />, {
+      mono: true,
+    }),
+    fact(
+      "Member since",
+      formatDate(customer.createdAt),
+      <Clock className="h-3 w-3" />,
+    ),
+  ];
+
+  const identification: Fact[] = [
+    fact("ID type", customer.idType),
+    fact("ID number", customer.idNumber, undefined, { mono: true }),
+    fact("TIN", customer.tinNumber, undefined, { mono: true }),
+    fact("VRN", customer.vrn, undefined, { mono: true }),
+  ];
+
   return (
-    <div className="flex flex-col gap-1 bg-card px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:shrink-0">
-        {Icon && <Icon className="h-3 w-3" />}
-        {label}
-      </dt>
-      <dd className="min-w-0 break-words text-sm font-medium text-ink sm:text-right">
-        {isEmpty ? <span className="text-muted-foreground">—</span> : value}
-      </dd>
+    <div className="flex flex-col gap-3.5">
+      <PanelCard icon={<User className="h-3.5 w-3.5" />} title="Profile">
+        <FactGrid rows={profile} cols={2} />
+      </PanelCard>
+
+      <PanelCard
+        icon={<FileText className="h-3.5 w-3.5" />}
+        title="Identification"
+      >
+        <FactGrid rows={identification} cols={2} />
+      </PanelCard>
+
+      <PanelCard
+        icon={<MapPin className="h-3.5 w-3.5" />}
+        title="Addresses"
+        count={addresses.length || undefined}
+        pad0={addresses.length === 0}
+      >
+        {addresses.length === 0 ? (
+          <EmptyState
+            icon={<MapPin className="h-5 w-5" />}
+            title="No addresses on file"
+            sub="Capture one when you next take an order or reservation."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2">
+            {addresses.map((addr) => (
+              <div
+                key={addr.id as string}
+                className="flex flex-col gap-1.5 bg-card px-4 py-3"
+              >
+                <Badge variant="soft" className="w-fit text-[10.5px]">
+                  {ADDRESS_TYPE_LABELS[addr.addressType] ?? addr.addressType}
+                </Badge>
+                <p className="whitespace-pre-wrap text-[13px] text-ink-2">
+                  {addr.addressLine}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </PanelCard>
+
+      <PanelCard
+        icon={<Tag className="h-3.5 w-3.5" />}
+        title="Preferences"
+        count={preferences.length || undefined}
+        pad0={preferences.length === 0}
+      >
+        {preferences.length === 0 ? (
+          <EmptyState
+            icon={<Tag className="h-5 w-5" />}
+            title="No preferences captured"
+            sub="Staff can record dietary, seating, or communication preferences over time."
+          />
+        ) : (
+          <FactGrid
+            rows={preferences.map((p) =>
+              fact(p.preferenceKey, p.preferenceValue),
+            )}
+            cols={2}
+          />
+        )}
+      </PanelCard>
+
+      {customer.notes ? (
+        <PanelCard
+          icon={<StickyNote className="h-3.5 w-3.5" />}
+          title="Staff notes"
+        >
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">
+            {customer.notes}
+          </p>
+        </PanelCard>
+      ) : null}
     </div>
   );
 }

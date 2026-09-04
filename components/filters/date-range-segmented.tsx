@@ -9,12 +9,15 @@ import {
   useTransition,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import { CalendarRange, Loader2 } from "lucide-react";
-import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  MonthRangePicker,
+  type MonthRange,
+} from "@/components/filters/month-range-picker";
 import {
   Popover,
   PopoverContent,
@@ -22,26 +25,32 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-  detectPreset,
+  DEFAULT_RANGE_PRESETS,
+  detectPresetKey,
+  formatMonthRangeLabel,
   formatRangeLabel,
-  getPresetRange,
-  RANGE_PRESETS,
-  type RangePreset,
+  type RangePresetDef,
 } from "@/lib/date-range";
 
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
 
 /**
- * Order presets give up their seat in when the control runs out of room —
- * lowest value to the operator first. "Today" and the page's own default are
- * never in here, so the control always keeps the range you opened on plus the
- * one everybody reaches for.
+ * Order the default presets give up their seat in when the control runs out
+ * of room — lowest value to the operator first. "Today" and the page's own
+ * default are never in here, so the control always keeps the range you opened
+ * on plus the one everybody reaches for. A page that supplies its own
+ * {@link Props.presets} collapses them from the last one backwards, keeping
+ * the first.
  */
-const COLLAPSE_ORDER: Array<Exclude<RangePreset, "custom">> = [
-  "week",
-  "yesterday",
-  "month",
-];
+const COLLAPSE_ORDER: string[] = ["week", "yesterday", "month"];
+
+function collapseOrderFor(presets: RangePresetDef[]): string[] {
+  if (presets === DEFAULT_RANGE_PRESETS) return COLLAPSE_ORDER;
+  return presets
+    .slice(1)
+    .map((p) => p.key)
+    .reverse();
+}
 
 /** useLayoutEffect that doesn't warn during SSR. */
 const useIsoLayoutEffect =
@@ -79,7 +88,23 @@ interface Props {
    * actually opens on. Pages that default to "All" set {@link allowClear}
    * instead — that segment is never collapsed either.
    */
-  defaultPreset?: Exclude<RangePreset, "custom">;
+  defaultPreset?: string;
+  /**
+   * The presets to offer instead of the standard Today / Yesterday / This
+   * week / This month row. Keys drive the active highlight and the spinner;
+   * `defaultPreset` must be one of them. Pass a stable reference (a module
+   * constant or a memoised array): the collapse logic keys on its identity,
+   * and a fresh array every render would restart the fit every render.
+   */
+  presets?: RangePresetDef[];
+  /**
+   * `"month"` swaps the Custom popover's day calendar for a month grid and
+   * makes every custom range whole months, first day to last. Presets are
+   * expected to be whole months too. Default `"day"`.
+   */
+  granularity?: "day" | "month";
+  /** Month granularity only: longest custom span the picker allows. */
+  maxMonths?: number;
   className?: string;
 }
 
@@ -87,7 +112,9 @@ interface Props {
  * The dashboard's standard date-range control — a segmented pill of presets
  * (Today / Yesterday / This week / This month) plus a Custom range popover.
  * URL-driven: writes `from`/`to` and resets `page`. Every dashboard date
- * filter renders through this so they all share one look.
+ * filter renders through this so they all share one look. A page can swap
+ * in its own {@link Props.presets} and, with {@link Props.granularity}
+ * `"month"`, turn the whole thing into a month picker with the same look.
  *
  * The pill collapses to fit: when its box is too narrow it sheds presets in
  * {@link COLLAPSE_ORDER}, keeping Today, Custom, the active preset and the
@@ -104,8 +131,12 @@ export function DateRangeSegmented({
   allLabel = "All",
   onChange,
   defaultPreset = "month",
+  presets = DEFAULT_RANGE_PRESETS,
+  granularity = "day",
+  maxMonths,
   className,
 }: Props) {
+  const monthly = granularity === "month";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -118,13 +149,15 @@ export function DateRangeSegmented({
   }, []);
 
   const isAll = !from && !to;
-  const activePreset = useMemo<RangePreset | null>(
-    () => (isAll ? null : detectPreset(from, to)),
-    [isAll, from, to],
+  const activePreset = useMemo<string | null>(
+    () => (isAll ? null : detectPresetKey(presets, from, to)),
+    [isAll, from, to, presets],
   );
 
   const [customOpen, setCustomOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRange | undefined>(
+  // One draft shape serves both pickers: the day calendar's DateRange and the
+  // month grid's MonthRange are both `{ from?: Date; to?: Date }`.
+  const [draft, setDraft] = useState<MonthRange | undefined>(
     from || to
       ? {
           from: from ? new Date(from) : undefined,
@@ -136,11 +169,9 @@ export function DateRangeSegmented({
   // still reflect the OLD url — React only swaps them in once the new RSC
   // payload commits. Track which segment was actually clicked so the spinner
   // lands on it instead of on the previously-active one.
-  const [pendingKey, setPendingKey] = useState<RangePreset | "all" | null>(
-    null,
-  );
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
 
-  const apply = (next: { from: string; to: string }, key: RangePreset) => {
+  const apply = (next: { from: string; to: string }, key: string) => {
     if (onChange) {
       onChange(next);
       return;
@@ -173,8 +204,12 @@ export function DateRangeSegmented({
 
   const onApplyCustom = () => {
     if (!draft?.from) return;
+    const start = draft.from;
+    const end = draft.to ?? draft.from;
     apply(
-      { from: fmt(draft.from), to: fmt(draft.to ?? draft.from) },
+      monthly
+        ? { from: fmt(startOfMonth(start)), to: fmt(endOfMonth(end)) }
+        : { from: fmt(start), to: fmt(end) },
       "custom",
     );
     setCustomOpen(false);
@@ -193,10 +228,10 @@ export function DateRangeSegmented({
 
   const collapsible = useMemo(
     () =>
-      COLLAPSE_ORDER.filter(
+      collapseOrderFor(presets).filter(
         (key) => key !== defaultPreset && key !== activePreset,
       ),
-    [defaultPreset, activePreset],
+    [presets, defaultPreset, activePreset],
   );
 
   useIsoLayoutEffect(() => {
@@ -241,8 +276,11 @@ export function DateRangeSegmented({
     () => new Set(collapsible.slice(0, collapsedCount)),
     [collapsible, collapsedCount],
   );
-  const visiblePresets = RANGE_PRESETS.filter((p) => !hiddenKeys.has(p.key));
-  const hiddenPresets = RANGE_PRESETS.filter((p) => hiddenKeys.has(p.key));
+  const visiblePresets = presets.filter((p) => !hiddenKeys.has(p.key));
+  const hiddenPresets = presets.filter((p) => hiddenKeys.has(p.key));
+  const customLabel = monthly
+    ? formatMonthRangeLabel(from, to)
+    : formatRangeLabel(from, to);
 
   return (
     <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}>
@@ -274,11 +312,11 @@ export function DateRangeSegmented({
             {allLabel}
           </button>
         )}
-        {visiblePresets.map(({ key, label: presetLabel }) => (
+        {visiblePresets.map(({ key, label: presetLabel, range }) => (
           <button
             key={key}
             type="button"
-            onClick={() => apply(getPresetRange(key), key)}
+            onClick={() => apply(range(), key)}
             disabled={isPending}
             className={cn(segButton, activePreset === key ? segActive : segIdle)}
           >
@@ -316,7 +354,7 @@ export function DateRangeSegmented({
               ) : (
                 <CalendarRange className="h-3.5 w-3.5" />
               )}
-              {isCustom ? formatRangeLabel(from, to) : "Custom"}
+              {isCustom ? customLabel : "Custom"}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] p-0" align="end">
@@ -328,14 +366,14 @@ export function DateRangeSegmented({
                   Quick ranges
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {hiddenPresets.map(({ key, label: presetLabel }) => (
+                  {hiddenPresets.map(({ key, label: presetLabel, range }) => (
                     <Button
                       key={key}
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        apply(getPresetRange(key), key);
+                        apply(range(), key);
                         setCustomOpen(false);
                       }}
                     >
@@ -345,17 +383,31 @@ export function DateRangeSegmented({
                 </div>
               </div>
             )}
-            <Calendar
-              mode="range"
-              defaultMonth={draft?.from}
-              selected={draft}
-              onSelect={setDraft}
-              numberOfMonths={2}
-              disabled={{ after: today }}
-              toDate={today}
-              initialFocus
-            />
+            {monthly ? (
+              <MonthRangePicker
+                selected={draft}
+                onSelect={setDraft}
+                toDate={today}
+                maxMonths={maxMonths}
+              />
+            ) : (
+              <Calendar
+                mode="range"
+                defaultMonth={draft?.from}
+                selected={draft?.from ? { from: draft.from, to: draft.to } : undefined}
+                onSelect={setDraft}
+                numberOfMonths={2}
+                disabled={{ after: today }}
+                toDate={today}
+                initialFocus
+              />
+            )}
             <div className="flex items-center justify-end gap-2 border-t border-line p-3">
+              {monthly && maxMonths && (
+                <span className="mr-auto text-[11px] text-muted-foreground">
+                  Up to {maxMonths} months
+                </span>
+              )}
               <Button
                 type="button"
                 variant="ghost"

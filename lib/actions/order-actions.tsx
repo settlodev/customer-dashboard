@@ -81,6 +81,18 @@ export interface SearchOrdersParams {
   tableId?: string;
   /** Scope to orders a staff member is assigned to or finished (the /staff/[id] tab). */
   staffId?: string;
+  /**
+   * One customer's ledger (the /customers/[id] Orders tab). With no explicit
+   * date range the OMS runs this UNBOUNDED rather than defaulting to the
+   * current month — an unsettled signed bill from months back is the point.
+   */
+  customerId?: string;
+  /**
+   * `true` keeps only orders still carrying a signed-bill receivable (the
+   * debt, any status); `false` only the rest. Combined with `status` this
+   * yields the customer page's buckets — see `CUSTOMER_ORDER_BUCKETS`.
+   */
+  signed?: boolean;
   search?: string;
   /** 1-based page from the URL; converted to the OMS's 0-based `page` here. */
   page?: number;
@@ -123,6 +135,8 @@ export const searchOrders = async (
     if (params.excludeAbandoned) qs.set("excludeAbandoned", "true");
     if (params.tableId) qs.set("tableId", params.tableId);
     if (params.staffId) qs.set("staffId", params.staffId);
+    if (params.customerId) qs.set("customerId", params.customerId);
+    if (params.signed != null) qs.set("signed", String(params.signed));
     if (params.search) qs.set("search", params.search);
     // OMS is 0-indexed; the dashboard pager is 1-indexed.
     qs.set("page", String(params.page && params.page > 0 ? params.page - 1 : 0));
@@ -145,6 +159,9 @@ export interface OrdersSummaryParams {
   excludeAbandoned?: boolean;
   tableId?: string;
   staffId?: string;
+  /** One customer's ledger — see {@link SearchOrdersParams.customerId}. */
+  customerId?: string;
+  signed?: boolean;
 }
 
 /**
@@ -169,6 +186,8 @@ export const ordersSummary = async (
     if (params.excludeAbandoned) qs.set("excludeAbandoned", "true");
     if (params.tableId) qs.set("tableId", params.tableId);
     if (params.staffId) qs.set("staffId", params.staffId);
+    if (params.customerId) qs.set("customerId", params.customerId);
+    if (params.signed != null) qs.set("signed", String(params.signed));
 
     const data = await oms().get<OrdersKpis>(
       `${ordersBase}/summary?${qs.toString()}`,
