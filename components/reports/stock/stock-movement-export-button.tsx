@@ -68,6 +68,14 @@ export function StockMovementExportButton({
           lens,
           sort: sort || undefined,
         });
+        if (!report) {
+          toast({
+            variant: "destructive",
+            title: "Couldn't export",
+            description: "The report could not be loaded. Please try again.",
+          });
+          return;
+        }
         if (report.content.length === 0) {
           toast({
             variant: "destructive",

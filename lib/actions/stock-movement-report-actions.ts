@@ -1,6 +1,7 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { parseStringify } from "@/lib/utils";
 import { inventoryUrl } from "./inventory-client";
 import type {
@@ -64,11 +65,16 @@ const rec = (v: unknown): Record<string, unknown> =>
 /**
  * Fetch one page of the stock movement report from the Inventory Service.
  * The active location rides on the X-Location-Id header (set by ApiClient),
- * so no locationId is passed. Fails soft to an empty report.
+ * so no locationId is passed.
+ *
+ * Auth/permission failures propagate to the route error boundary; any other
+ * failure resolves to `null` so the page can show a "couldn't load" panel.
+ * It must never resolve to an empty report on error — that used to render as
+ * "No movement for this period", which reads as a data fact, not an outage.
  */
 export async function getStockMovementReport(
   q: StockMovementQuery,
-): Promise<StockMovementReportResponse> {
+): Promise<StockMovementReportResponse | null> {
   try {
     const params = new URLSearchParams({
       from: q.from,
@@ -118,8 +124,10 @@ export async function getStockMovementReport(
       totalPages: Math.round(n(raw.totalPages)),
       last: Boolean(raw.last),
     };
-  } catch {
-    return EMPTY_STOCK_MOVEMENT_REPORT;
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error("getStockMovementReport failed", error);
+    return null;
   }
 }
 
