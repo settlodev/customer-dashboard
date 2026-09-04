@@ -28,6 +28,7 @@ import {
   listCustomerSignedBills,
 } from "@/lib/actions/customer-ar-invoice-actions";
 import { getLocationSettings } from "@/lib/actions/location-settings-actions";
+import { parseCustomerTab } from "@/lib/customers/customer-detail-tabs";
 import { ordersSummary, searchOrders } from "@/lib/actions/order-actions";
 import { fetchAllTables } from "@/lib/actions/space-actions";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
@@ -43,10 +44,7 @@ import type {
 } from "@/types/customer-ar-invoice/type";
 import type { Customer, CustomerPreference } from "@/types/customer/type";
 
-import {
-  CustomerDetailView,
-  parseCustomerTab,
-} from "./customer-detail-view";
+import { CustomerDetailView } from "./customer-detail-view";
 
 type Params = {
   params: Promise<{ id: string }>;
