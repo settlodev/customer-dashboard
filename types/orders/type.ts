@@ -20,7 +20,22 @@ export enum OrderStatus {
   // Parked unpaid order deferred for later payment with no customer
   // attached; resolves to CLOSED or WRITTEN_OFF.
   DEFERRED = "DEFERRED",
+  // A closed order still carrying a signed-bill receivable — a sale put on
+  // the customer's account and not yet settled. Presentation-only: the OMS
+  // stores it as CLOSED and returns SIGNED only to callers sending
+  // `X-Order-Status-Version: 2` (the dashboard's orders client does). Also a
+  // filter value on the search endpoints, meaning "closed and still owed".
+  // Settling returns the order to CLOSED; a write-off moves it to WRITTEN_OFF.
+  SIGNED = "SIGNED",
 }
+
+/**
+ * Closed in the till's sense — the order is finished, whether it was paid
+ * (CLOSED) or put on the customer's account (SIGNED). Use for gates that
+ * mean "no longer being served", not "paid".
+ */
+export const isClosedOrder = (status: OrderStatus | string | null | undefined) =>
+  status === OrderStatus.CLOSED || status === OrderStatus.SIGNED;
 
 export enum OrderType {
   IMMEDIATE = "IMMEDIATE",
@@ -651,6 +666,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.MERGED]: "Merged",
   [OrderStatus.WRITTEN_OFF]: "Written off",
   [OrderStatus.DEFERRED]: "Deferred",
+  [OrderStatus.SIGNED]: "Signed",
 };
 
 export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
@@ -668,6 +684,8 @@ export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
     "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
   [OrderStatus.DEFERRED]:
     "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  [OrderStatus.SIGNED]:
+    "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -762,6 +780,7 @@ export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
 export const ORDER_STATUS_FILTER_OPTIONS = [
   { label: "All", value: "" },
   { label: "Open", value: OrderStatus.OPEN },
+  { label: "Signed", value: OrderStatus.SIGNED },
   { label: "Closed", value: OrderStatus.CLOSED },
   { label: "Cancelled", value: OrderStatus.CANCELLED },
   { label: "Abandoned", value: OrderStatus.ABANDONED },
