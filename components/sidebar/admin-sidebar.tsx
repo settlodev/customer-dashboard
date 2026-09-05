@@ -248,7 +248,7 @@ const NAV_GROUPS: NavGroup[] = [
         title: "EFD / VFD",
         href: "/efd-vfd",
         icon: Receipt,
-        permissions: [PERM.VFD_TRIGGER],
+        permissions: [PERM.VFD_TRIGGER, PERM.VFD_READ],
       },
       {
         title: "App Version",
