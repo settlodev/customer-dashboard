@@ -1,13 +1,17 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { PageShell, PageHeader, PageBreadcrumbs, PageBody } from "@/components/layouts/page-shell";
 import {
   fetchBatchById,
   fetchBatchMovements,
   findBatchesByNumber,
 } from "@/lib/actions/traceability-actions";
-import { BatchDetailPanel } from "@/components/widgets/traceability/batch-detail-panel";
+import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
+import {
+  BatchDetailPanel,
+  type BatchCorrectionLine,
+} from "@/components/widgets/traceability/batch-detail-panel";
 import { BatchPickerList } from "@/components/widgets/traceability/batch-picker-list";
+import { CorrectValueAction } from "@/components/widgets/inventory/correct-value-action";
 import type { StockBatchSummary } from "@/types/traceability/type";
 
 interface Props {
@@ -34,7 +38,7 @@ export default async function StockBatchDetailPage({ params }: Props) {
 
   if (resolved.kind === "picker") {
     return (
-      <BatchShell breadcrumbKey={decoded} showNumberAsTitle>
+      <BatchShell breadcrumbKey={decoded}>
         <BatchPickerList
           batchNumber={decoded}
           batches={resolved.batches}
@@ -44,22 +48,69 @@ export default async function StockBatchDetailPage({ params }: Props) {
     );
   }
 
-  // Single batch — load movements and render the detail panel.
-  const movementsRes = await fetchBatchMovements(resolved.batch.id, 0, 50);
+  // Single batch — load movements and this batch's value-correction history,
+  // then render the detail panel.
+  const batch = resolved.batch;
+  const [movementsRes, corrections] = await Promise.all([
+    fetchBatchMovements(batch.id, 0, 50),
+    loadCorrections(batch.id),
+  ]);
   const movements =
     movementsRes.responseType === "success" && movementsRes.data
       ? movementsRes.data
       : { items: [], totalElements: 0, returned: 0, truncated: false };
 
   return (
-    <BatchShell breadcrumbKey={resolved.batch.batchNumber} showNumberAsTitle>
+    <BatchShell
+      breadcrumbKey={batch.batchNumber}
+      actions={
+        <CorrectValueAction
+          targets={[
+            {
+              variantId: batch.stockVariantId,
+              variantName: batch.stockVariantDisplayName ?? "Unknown item",
+              batchId: batch.id,
+              batchNumber: batch.batchNumber,
+              currentUnitCost: batch.unitCost ?? 0,
+              quantityOnHand: batch.quantityOnHand,
+              initialQuantity: batch.initialQuantity,
+              currency: batch.currency,
+            },
+          ]}
+        />
+      }
+    >
       <BatchDetailPanel
-        batch={resolved.batch}
-        batchId={resolved.batch.id}
+        batch={batch}
+        batchId={batch.id}
         initialMovements={movements}
+        corrections={corrections}
       />
     </BatchShell>
   );
+}
+
+/**
+ * This batch's value-correction history — every CORRECTION-category stock
+ * modification whose line items target this batch, whether it originated
+ * from this page's own "Correct value" button, the stock-intake detail page,
+ * or the modification form's value-only mode. There's no batch-scoped search
+ * endpoint, so this fetches CORRECTION modifications (bounded to a generous
+ * page) and filters by `batchId`. Fetched here rather than in the panel so a
+ * correction saved from the header action shows up on the router refresh
+ * the modal already triggers.
+ */
+async function loadCorrections(batchId: string): Promise<BatchCorrectionLine[]> {
+  try {
+    const res = await searchStockModifications(0, 100, "CORRECTION");
+    return (res?.content ?? []).flatMap((correction) =>
+      (correction.items ?? [])
+        .filter((item) => item.batchId === batchId)
+        .map((item) => ({ correction, item })),
+    );
+  } catch {
+    return [];
+  }
 }
 
 type Resolved =
@@ -104,14 +155,15 @@ async function resolveByBatchNumber(batchNumber: string): Promise<Resolved> {
 
 // Shared chrome for both the single-batch and picker branches. Renders the
 // standard PageShell so the page matches the rest of the app. (Named BatchShell
-// to avoid colliding with the imported PageShell primitive.)
+// to avoid colliding with the imported PageShell primitive.) The breadcrumb
+// is the way back to Traceability — no separate back link.
 function BatchShell({
   breadcrumbKey,
-  showNumberAsTitle,
+  actions,
   children,
 }: {
   breadcrumbKey: string;
-  showNumberAsTitle: boolean;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -123,21 +175,9 @@ function BatchShell({
         ]}
       />
       <PageHeader
-        title={
-          showNumberAsTitle ? (
-            <span className="font-mono">{breadcrumbKey}</span>
-          ) : (
-            "Stock batch"
-          )
-        }
-        actions={
-          <Link
-            href="/traceability"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← back to traceability
-          </Link>
-        }
+        title={<span className="font-mono">{breadcrumbKey}</span>}
+        subtitle="Stock batch"
+        actions={actions}
       />
       <PageBody>{children}</PageBody>
     </PageShell>
