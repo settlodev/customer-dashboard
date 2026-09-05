@@ -1,4 +1,5 @@
 import type { DestinationType } from "@/types/catalogue/enums";
+import type { ReferenceType } from "@/types/stock-movement/type";
 
 export type ModificationCategory =
   | "DAMAGE"
@@ -28,6 +29,12 @@ export interface StockModification {
   valueCorrection?: boolean;
   /** Denormalised so downstream consumers need no location→business lookup. */
   businessId?: string | null;
+  /** Parent document this modification was raised against (value corrections). */
+  sourceReferenceType?: ReferenceType | null;
+  sourceReferenceId?: string | null;
+  /** Day session the modification was stamped into; drives accounting dates. */
+  daySessionId?: string | null;
+  businessDate?: string | null;
   items: StockModificationItem[];
   createdAt: string;
   updatedAt: string;
