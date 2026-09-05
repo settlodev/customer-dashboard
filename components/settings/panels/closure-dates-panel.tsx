@@ -1,10 +1,23 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Plus, Trash2, Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  CalendarDays,
+  CalendarOff,
+  Clock,
+  Loader2,
+  NotebookPen,
+  Plus,
+  Sun,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  SegmentedBoolean,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -14,9 +27,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsSection } from "../shared/settings-section";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
 import {
   listClosureDates,
   createClosureDate,
@@ -56,54 +77,57 @@ export function ClosureDatesPanel() {
     <SettingsSection
       title="Closure dates"
       description="Mark days the location is closed so reports, reservations and staff schedules skip them."
+      icon={<CalendarOff className="h-4 w-4" />}
+      footer={<AddClosureDateDialog onAdded={refresh} />}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
-          <Switch
-            checked={upcomingOnly}
-            onCheckedChange={setUpcomingOnly}
-            aria-label="Show upcoming only"
-          />
-          <span className="text-muted-foreground">Show upcoming only</span>
-        </div>
-        <AddClosureDateDialog onAdded={refresh} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ToggleRow
+          label="Show upcoming only"
+          hint="Hide closures that have already passed."
+          checked={upcomingOnly}
+          onChange={setUpcomingOnly}
+        />
       </div>
 
-      {loading ? (
-        <div className="py-8 flex justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : items.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground italic">
-            No {upcomingOnly ? "upcoming " : ""}closure dates.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="rounded-md border divide-y">
-          {items.map((item) => (
-            <ClosureDateRow
-              key={item.id}
-              item={item}
-              onChange={refresh}
-              onDelete={async () => {
-                const res = await deleteClosureDate(item.id);
-                if (res.responseType === "error") {
-                  toast({
-                    variant: "destructive",
-                    title: "Couldn't remove",
-                    description: res.message,
-                  });
-                  return;
-                }
-                toast({ title: "Removed" });
-                refresh();
-              }}
-              formatDate={formatDate}
-            />
-          ))}
-        </div>
-      )}
+      <SettingsTableCard
+        loading={loading}
+        isEmpty={items.length === 0}
+        emptyLabel={`No ${upcomingOnly ? "upcoming " : ""}closure dates.`}
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className={tableHeadRowClass}>
+              <th className={thClass}>Date</th>
+              <th className={thClass}>Reason</th>
+              <th className={thClass}>Coverage</th>
+              <th className={`${thClass} text-right`}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <ClosureDateRow
+                key={item.id}
+                item={item}
+                onChange={refresh}
+                onDelete={async () => {
+                  const res = await deleteClosureDate(item.id);
+                  if (res.responseType === "error") {
+                    toast({
+                      variant: "destructive",
+                      title: "Couldn't remove",
+                      description: res.message,
+                    });
+                    return;
+                  }
+                  toast({ title: "Removed" });
+                  refresh();
+                }}
+                formatDate={formatDate}
+              />
+            ))}
+          </tbody>
+        </table>
+      </SettingsTableCard>
     </SettingsSection>
   );
 }
@@ -143,8 +167,8 @@ function AddClosureDateDialog({ onAdded }: { onAdded: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add closure
+        <Button size="sm">
+          <Plus className="h-3.5 w-3.5" /> Add closure
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -155,43 +179,49 @@ function AddClosureDateDialog({ onAdded }: { onAdded: () => void }) {
             avoid this date automatically.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium">Date</label>
-            <Input
-              type="date"
-              value={closureDate}
-              onChange={(e) => setClosureDate(e.target.value)}
+        <div className="space-y-3.5">
+          <Field label="Date" required>
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="date"
+                mono
+                prefix={<CalendarDays className="h-3.5 w-3.5" />}
+                value={closureDate}
+                onChange={(e) => setClosureDate(e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Reason" optional>
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<NotebookPen className="h-3.5 w-3.5" />}
+                placeholder="e.g. Public holiday, staff retreat…"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <div className="grid grid-cols-1 gap-3">
+            <ToggleRow
+              label="All day"
+              hint="Leave on for a regular closure. Turn off if you intend to handle it as a partial-day later."
+              checked={allDay}
+              onChange={setAllDay}
               disabled={isPending}
             />
-          </div>
-          <div>
-            <label className="text-xs font-medium">Reason (optional)</label>
-            <Input
-              placeholder="e.g. Public holiday, staff retreat…"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2">
-            <div>
-              <p className="text-sm font-medium">All day</p>
-              <p className="text-[11px] text-muted-foreground">
-                Leave on for a regular closure. Turn off if you intend to
-                handle it as a partial-day later.
-              </p>
-            </div>
-            <Switch checked={allDay} onCheckedChange={setAllDay} disabled={isPending} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Add
+          <Button onClick={onSubmit} disabled={isPending || !closureDate}>
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Adding…" : "Add closure"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -237,51 +267,81 @@ function ClosureDateRow({
     });
 
   return (
-    <div className="p-3 flex items-start justify-between gap-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{formatDate(item.closureDate)}</p>
+    <tr className={trClass}>
+      <td className={`${tdClass} whitespace-nowrap font-mono text-[12px]`}>
+        {formatDate(item.closureDate)}
+      </td>
+      <td className={`${tdClass} min-w-[180px]`}>
         {editing ? (
-          <div className="mt-2 space-y-2">
-            <Input
-              placeholder="Reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={isPending}
-            />
-            <div className="flex items-center gap-2">
-              <Switch checked={allDay} onCheckedChange={setAllDay} disabled={isPending} />
-              <span className="text-xs text-muted-foreground">All day</span>
-            </div>
-          </div>
+          <ControlInput
+            aria-label="Reason"
+            prefix={<NotebookPen className="h-3.5 w-3.5" />}
+            placeholder="Reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            disabled={isPending}
+          />
+        ) : item.reason ? (
+          item.reason
         ) : (
-          <p className="text-xs text-muted-foreground">
-            {item.reason || "No reason set"}
-            {item.allDay ? " · All day" : " · Partial"}
-          </p>
+          <span className="text-muted-foreground">No reason set</span>
         )}
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
+      </td>
+      <td className={tdClass}>
         {editing ? (
-          <>
-            <Button size="sm" onClick={save} disabled={isPending}>
-              {isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-              Save
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={isPending}>
-              Cancel
-            </Button>
-          </>
+          <SegmentedBoolean
+            value={allDay}
+            onChange={setAllDay}
+            trueLabel="All day"
+            falseLabel="Partial"
+            disabled={isPending}
+            stretch={false}
+          />
+        ) : item.allDay ? (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium text-ink-2">
+            <Sun className="h-3.5 w-3.5 text-warn" />
+            All day
+          </span>
         ) : (
-          <>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-            <Button size="sm" variant="ghost" className="text-red-600" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium text-ink-2">
+            <Clock className="h-3.5 w-3.5 text-ink-3" />
+            Partial
+          </span>
         )}
-      </div>
-    </div>
+      </td>
+      <td className={tdActionsClass}>
+        <div className="inline-flex items-center gap-1">
+          {editing ? (
+            <>
+              <Button size="sm" onClick={save} disabled={isPending}>
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isPending ? "Saving…" : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+              <ConfirmDeleteButton
+                disabled={isPending}
+                onConfirm={onDelete}
+                title={`Remove the closure on ${formatDate(item.closureDate)}?`}
+                description="The location goes back to its normal opening hours on this day, and reservations, schedules and reports stop skipping it."
+                confirmLabel="Remove"
+              />
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }

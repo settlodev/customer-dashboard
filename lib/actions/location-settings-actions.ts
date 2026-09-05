@@ -53,12 +53,14 @@ export async function updateLocationSettings(
     };
   }
 
-  // Strip undefined and empty strings so we don't overwrite backend values
-  // with "" when the user left a field untouched. `null` is preserved.
+  // Strip only `undefined`. Callers already send just the fields that
+  // changed (useEntitySettingsPanel diffs against its baseline), and an
+  // empty string is the explicit "clear this field" signal: the endpoint has
+  // PATCH semantics where null/absent means "unchanged", so "" is the only
+  // way to clear a text value — the service stores it as null.
   const payload: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(validated.data)) {
     if (v === undefined) continue;
-    if (typeof v === "string" && v === "") continue;
     payload[k] = v;
   }
 

@@ -16,12 +16,26 @@ import {
   Copy,
   Info,
   Loader2,
+  LogOut,
   MoreHorizontal,
   Plus,
   Smartphone,
   Tablet,
+  Tag,
+  Trash2,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,14 +62,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ControlInput,
+  StandaloneField as Field,
+  ToggleRow,
+  standaloneLabelClass,
+} from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import DepartmentSelector from "@/components/widgets/department-selector";
 import { useRealtimeChannel } from "@/hooks/use-realtime-channel";
 import { useRealtimeStatus } from "@/hooks/use-realtime-status";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { WsMessage } from "@/lib/realtime/types";
 
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -76,6 +94,7 @@ import {
   DEVICE_STATUS_DESCRIPTIONS,
   DEVICE_STATUS_LABELS,
 } from "@/types/device/type";
+import { PanelHeader } from "./shared/panel-header";
 import { SectionTutorialDialog } from "@/components/widgets/help/section-tutorial-dialog";
 import { TutorialSection } from "@/lib/tutorials";
 
@@ -118,15 +137,15 @@ function formatAbsolute(iso: string | null): string {
 function statusClass(status: DeviceStatus | null): string {
   switch (status) {
     case "ACTIVE":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      return "border-transparent bg-pos-tint text-pos";
     case "LOGGED_OUT":
-      return "bg-amber-100 text-amber-800 border-amber-200";
+      return "border-transparent bg-warn-tint text-warn";
     case "PENDING_PAIR":
-      return "bg-blue-100 text-blue-800 border-blue-200";
+      return "border-transparent bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-400";
     case "DELETED":
-      return "bg-gray-100 text-gray-500 border-gray-200";
+      return "border-line bg-canvas text-muted-foreground";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-200";
+      return "border-line bg-canvas text-ink-2";
   }
 }
 
@@ -478,7 +497,7 @@ const DeviceSettings = () => {
       onClick={() => setDialog({ type: "pair" })}
       disabled={pairButtonDisabled}
     >
-      <Plus className="h-4 w-4 mr-2" />
+      <Plus className="h-3.5 w-3.5" />
       Pair new device
     </Button>
   );
@@ -486,36 +505,36 @@ const DeviceSettings = () => {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Devices
-            </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Devices linked to this location.
-              {seatSummary && (
-                <>
-                  {" · "}
-                  <span
-                    className={atCapacity ? "text-amber-700 font-medium" : ""}
-                  >
-                    {seatSummary}
-                  </span>
-                </>
-              )}
-              {loggedOutCount > 0 && !isUnlimited && (
-                <>
-                  {" · "}
-                  <span className="text-muted-foreground">
-                    {loggedOutCount} logged-out{" "}
-                    {loggedOutCount === 1 ? "device doesn't" : "devices don't"}{" "}
-                    count
-                  </span>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <PanelHeader
+            title="Devices"
+            description={
+              <>
+                Devices linked to this location.
+                {seatSummary && (
+                  <>
+                    {" · "}
+                    <span
+                      className={atCapacity ? "font-medium text-warn" : ""}
+                    >
+                      {seatSummary}
+                    </span>
+                  </>
+                )}
+                {loggedOutCount > 0 && !isUnlimited && (
+                  <>
+                    {" · "}
+                    <span className="text-muted-foreground">
+                      {loggedOutCount} logged-out{" "}
+                      {loggedOutCount === 1 ? "device doesn't" : "devices don't"}{" "}
+                      count
+                    </span>
+                  </>
+                )}
+              </>
+            }
+          />
+          <div className="flex shrink-0 items-center gap-2">
             <SectionTutorialDialog section={TutorialSection.POS_ACCESS} />
             {atCapacity ? (
               <TooltipProvider delayDuration={150}>
@@ -537,8 +556,8 @@ const DeviceSettings = () => {
           </div>
         </div>
         {atCapacity && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
-            <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-warn/30 bg-warn-tint px-3 py-2 text-[12.5px] leading-snug text-ink-2">
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-warn" />
             <span>
               Device cap reached. Logging out an unused device frees its seat
               without losing its row in the list — then pair a replacement (or
@@ -552,7 +571,7 @@ const DeviceSettings = () => {
         <DevicesSkeleton />
       ) : sortedDevices.length === 0 ? (
         <Card>
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
+          <CardContent className="p-10 text-center text-[13px] text-muted-foreground">
             No devices paired to this location yet.
           </CardContent>
         </Card>
@@ -684,26 +703,26 @@ function DeviceRow({
   const cardClass = isDeleted
     ? "opacity-60"
     : isLoggedOut
-      ? "border-dashed bg-muted/30"
+      ? "border-dashed bg-canvas/60"
       : undefined;
 
   return (
     <Card className={cardClass}>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
-          <div className="h-11 w-11 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-            <Icon className="h-5 w-5 text-gray-500" />
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-line bg-canvas">
+            <Icon className="h-5 w-5 text-muted-foreground" />
           </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="link"
                 onClick={onViewDetails}
-                className="truncate text-left text-sm font-medium hover:underline focus-visible:underline focus-visible:outline-none"
+                className="h-auto min-w-0 max-w-full justify-start p-0 text-sm font-medium text-ink hover:text-primary"
               >
-                {name}
-              </button>
+                <span className="truncate">{name}</span>
+              </Button>
               {/* Custom name replaces the device name as the title, but venues
                   with several identical-model tablets need BOTH to tell units
                   apart — so keep the hardware name visible beside it. */}
@@ -725,8 +744,7 @@ function DeviceRow({
               )}
               {isLoggedOut && (
                 <Badge
-                  variant="outline"
-                  className="bg-emerald-50 text-emerald-700 border-emerald-200"
+                  variant="pos"
                   title="This row no longer counts against your MAX_DEVICES cap."
                 >
                   Seat free
@@ -734,17 +752,14 @@ function DeviceRow({
               )}
               {device.suspended && (
                 <Badge
-                  variant="outline"
-                  className="bg-red-50 text-red-700 border-red-200"
+                  variant="neg"
                   title="Admin has paused this device. Tokens are rejected until unsuspended."
                 >
                   Suspended
                 </Badge>
               )}
               {device.pinRequired && !isDeleted && (
-                <Badge variant="outline" className="text-muted-foreground">
-                  PIN required
-                </Badge>
+                <Badge variant="soft">PIN required</Badge>
               )}
             </div>
 
@@ -753,10 +768,16 @@ function DeviceRow({
               {osLine && <span className="truncate">{osLine}</span>}
               {appLine && <span className="truncate">{appLine}</span>}
               {device.serialNumber && (
-                <span className="truncate">S/N: {device.serialNumber}</span>
+                <span className="truncate">
+                  S/N: <span className="font-mono">{device.serialNumber}</span>
+                </span>
               )}
               <span>Last seen: {formatRelative(device.lastActiveAt)}</span>
-              {device.lastIp && <span>IP: {device.lastIp}</span>}
+              {device.lastIp && (
+                <span className="truncate">
+                  IP: <span className="font-mono">{device.lastIp}</span>
+                </span>
+              )}
               {device.pairedAt && (
                 <span>Paired: {formatRelative(device.pairedAt)}</span>
               )}
@@ -847,7 +868,7 @@ function DeviceRow({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-red-600 focus:text-red-700"
+                    className="text-neg focus:text-neg"
                     onClick={onLogoutRequest}
                   >
                     Log out · free this seat
@@ -859,7 +880,7 @@ function DeviceRow({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-red-600 focus:text-red-700"
+                    className="text-neg focus:text-neg"
                     onClick={onDeleteRequest}
                   >
                     Delete from list
@@ -991,34 +1012,30 @@ function PairDeviceDialog({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="pair-name">Device name (optional)</Label>
-                <Input
-                  id="pair-name"
-                  maxLength={100}
-                  value={deviceName}
-                  onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder="e.g. Bar POS 1"
-                  disabled={isGenerating}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Shown in place of the device-reported name. You can change
-                  this later.
-                </p>
-              </div>
-              <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
-                <div>
-                  <p className="text-sm font-medium">Require PIN to unlock</p>
-                  <p className="text-xs text-muted-foreground">
-                    Staff must enter their PIN each time the device opens.
-                  </p>
-                </div>
-                <Switch
-                  checked={pinRequired}
-                  onCheckedChange={setPinRequired}
-                  disabled={isGenerating}
-                />
-              </div>
+              <Field
+                label="Device name"
+                optional
+                hint="Shown in place of the device-reported name. You can change this later."
+              >
+                {(id) => (
+                  <ControlInput
+                    id={id}
+                    maxLength={100}
+                    prefix={<Tag className="h-3.5 w-3.5" />}
+                    value={deviceName}
+                    onChange={(e) => setDeviceName(e.target.value)}
+                    placeholder="e.g. Bar POS 1"
+                    disabled={isGenerating}
+                  />
+                )}
+              </Field>
+              <ToggleRow
+                label="Require PIN to unlock"
+                hint="Staff must enter their PIN each time the device opens."
+                checked={pinRequired}
+                onChange={setPinRequired}
+                disabled={isGenerating}
+              />
             </div>
             <DialogFooter className="gap-3">
               <Button
@@ -1030,10 +1047,8 @@ function PairDeviceDialog({
               </Button>
 
               <Button onClick={generate} disabled={isGenerating}>
-                {isGenerating && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
-                Generate code
+                {isGenerating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isGenerating ? "Generating…" : "Generate code"}
               </Button>
             </DialogFooter>
           </>
@@ -1055,7 +1070,7 @@ function PairDeviceDialog({
                     {(code?.code ?? "").split("").map((ch, i) => (
                       <span
                         key={i}
-                        className="flex-1 aspect-square flex items-center justify-center text-4xl font-mono font-bold rounded-xl border-2 bg-gray-50 dark:bg-gray-800 select-all"
+                        className="flex aspect-square flex-1 select-all items-center justify-center rounded-xl border-2 border-line bg-canvas font-mono text-2xl font-bold text-ink sm:text-4xl"
                       >
                         {ch}
                       </span>
@@ -1069,15 +1084,15 @@ function PairDeviceDialog({
                     disabled={!code?.code}
                   >
                     {copied ? (
-                      <Check className="h-4 w-4 mr-2 text-green-600" />
+                      <Check className="h-3.5 w-3.5 text-pos" />
                     ) : (
-                      <Copy className="h-4 w-4 mr-2" />
+                      <Copy className="h-3.5 w-3.5" />
                     )}
                     {copied ? "Copied" : "Copy code"}
                   </Button>
 
                   {expired ? (
-                    <p className="text-xs text-red-600">Code expired</p>
+                    <p className="text-xs font-medium text-neg">Code expired</p>
                   ) : (
                     <p className="text-xs text-muted-foreground inline-flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -1096,9 +1111,9 @@ function PairDeviceDialog({
               {expired && (
                 <Button onClick={generate} disabled={isGenerating}>
                   {isGenerating && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   )}
-                  Generate a new code
+                  {isGenerating ? "Generating…" : "Generate a new code"}
                 </Button>
               )}
             </DialogFooter>
@@ -1121,13 +1136,29 @@ function formatCountdown(totalSeconds: number): string {
 // (battery, storage, last-seen) update here in place while it's open.
 // ──────────────────────────────────────────────────────────────────────
 
-function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: ReactNode;
+  /** Tabular-mono for ids, serials and addresses. */
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-start justify-between gap-4 py-1.5">
       <span className="flex-shrink-0 text-xs text-muted-foreground">
         {label}
       </span>
-      <span className="break-all text-right text-xs font-medium">{value}</span>
+      <span
+        className={cn(
+          "break-all text-right text-xs font-medium text-ink",
+          mono && "font-mono",
+        )}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -1141,10 +1172,10 @@ function DetailSection({
 }) {
   return (
     <div>
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mb-1 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-3">
         {title}
       </p>
-      <div className="divide-y divide-border/50 rounded-md border px-3">
+      <div className="divide-y divide-line rounded-md border border-line bg-card px-3">
         {children}
       </div>
     </div>
@@ -1238,8 +1269,12 @@ function DeviceDetailsDialog({
                   : "—"
               }
             />
-            <DetailRow label="Last IP" value={dash(device.lastIp)} />
-            <DetailRow label="App version" value={dash(device.appVersion)} />
+            <DetailRow label="Last IP" value={dash(device.lastIp)} mono />
+            <DetailRow
+              label="App version"
+              value={dash(device.appVersion)}
+              mono
+            />
           </DetailSection>
 
           <DetailSection title="Hardware">
@@ -1251,6 +1286,7 @@ function DeviceDetailsDialog({
             <DetailRow
               label="Serial number"
               value={dash(device.serialNumber)}
+              mono
             />
             {device.ramInGB != null && (
               <DetailRow
@@ -1276,16 +1312,18 @@ function DeviceDetailsDialog({
             {device.displayResolution && (
               <DetailRow label="Display" value={device.displayResolution} />
             )}
-            {device.imei && <DetailRow label="IMEI" value={device.imei} />}
+            {device.imei && (
+              <DetailRow label="IMEI" value={device.imei} mono />
+            )}
             {device.macAddress && (
-              <DetailRow label="MAC address" value={device.macAddress} />
+              <DetailRow label="MAC address" value={device.macAddress} mono />
             )}
           </DetailSection>
 
           {hasSystem && (
             <DetailSection title="System">
               {device.buildNumber && (
-                <DetailRow label="Build" value={device.buildNumber} />
+                <DetailRow label="Build" value={device.buildNumber} mono />
               )}
               {device.apiLevel != null && (
                 <DetailRow label="API level" value={String(device.apiLevel)} />
@@ -1328,8 +1366,12 @@ function DeviceDetailsDialog({
               label="Device name (reported)"
               value={dash(device.name)}
             />
-            <DetailRow label="Device ID" value={dash(device.id)} />
-            <DetailRow label="Fingerprint" value={dash(device.fingerprint)} />
+            <DetailRow label="Device ID" value={dash(device.id)} mono />
+            <DetailRow
+              label="Fingerprint"
+              value={dash(device.fingerprint)}
+              mono
+            />
           </DetailSection>
         </div>
 
@@ -1406,23 +1448,27 @@ function EditDeviceDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="device-name">Custom name</Label>
-            <Input
-              id="device-name"
-              maxLength={100}
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder={device.name ?? "Bar POS 1"}
-              disabled={isPending}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Shown in place of the device-reported name. Max 100 characters.
-            </p>
-          </div>
+          <Field
+            label="Custom name"
+            hint="Shown in place of the device-reported name. Max 100 characters."
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={100}
+                prefix={<Tag className="h-3.5 w-3.5" />}
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder={device.name ?? "Bar POS 1"}
+                disabled={isPending}
+              />
+            )}
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>Department</Label>
+          {/* DepartmentSelector owns its own trigger, so the label sits
+              beside it rather than inside a StandaloneField render-prop. */}
+          <div className="min-w-0 space-y-[7px]">
+            <label className={standaloneLabelClass}>Department</label>
             <DepartmentSelector
               value={departmentId || undefined}
               onChange={(v) => setDepartmentId(v)}
@@ -1437,8 +1483,8 @@ function EditDeviceDialog({
             Cancel
           </Button>
           <Button onClick={save} disabled={!isDirty || isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save changes
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1468,38 +1514,44 @@ function ConfirmLogoutDialog({
   const name = deviceDisplayName(device);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Log out {name}?</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger">
+        <AlertDialogIcon>
+          <LogOut className="h-5 w-5" />
+        </AlertDialogIcon>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Log out {name}?</AlertDialogTitle>
+          <AlertDialogDescription>
             Tokens are revoked immediately and the device stops syncing.
-            <span className="block mt-2">
+            <span className="mt-2 block">
               The seat frees up right away. The row stays in the list — to bring
               this device back online (or pair a replacement on the same seat),
               generate a new pairing code.
             </span>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
             Keep signed in
-          </Button>
-          <Button
-            variant="destructive"
+          </AlertDialogCancel>
+          <AlertDialogAction
             disabled={isPending}
-            onClick={() =>
+            // preventDefault keeps the dialog open while the request runs —
+            // the parent closes it once the action resolves, so the pending
+            // spinner stays visible exactly as before.
+            onClick={(e) => {
+              e.preventDefault();
               startTransition(async () => {
                 await onConfirm();
-              })
-            }
+              });
+            }}
           >
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Log out
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Logging out…" : "Log out"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -1520,36 +1572,43 @@ function ConfirmDeleteDialog({
   const name = deviceDisplayName(device);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Delete {name} from the list?</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger">
+        <AlertDialogIcon>
+          <Trash2 className="h-5 w-5" />
+        </AlertDialogIcon>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {name} from the list?</AlertDialogTitle>
+          <AlertDialogDescription>
             This hides the row from the device list. The seat is already free
             because the device is logged out — delete only if you don&apos;t
             want this entry around anymore.
-            <span className="block mt-2 text-xs">
+            <span className="mt-2 block text-xs">
               Audit history is preserved either way. Re-pairing the same
               hardware after this will create a brand new entry rather than
               bringing this row back.
             </span>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
             Keep in list
-          </Button>
-          <Button
-            variant="destructive"
+          </AlertDialogCancel>
+          <AlertDialogAction
             disabled={isPending}
-            onClick={() => startTransition(() => onConfirm())}
+            // preventDefault keeps the dialog mounted for the pending state;
+            // the parent's handler closes it when the delete resolves.
+            onClick={(e) => {
+              e.preventDefault();
+              startTransition(() => onConfirm());
+            }}
           >
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Delete from list
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Deleting…" : "Delete from list"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

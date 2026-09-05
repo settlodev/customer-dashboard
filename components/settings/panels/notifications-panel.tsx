@@ -1,9 +1,16 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+import { Bell, BellRing, FileText, Mail, Phone, Users } from "lucide-react";
+
+import {
+  ControlInput,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
+import { SettingsSection } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 import { useToast } from "@/hooks/use-toast";
 import { getOrCreateDeviceId, requestPermissionAndGetToken } from "@/lib/firebase/messaging";
@@ -20,7 +27,12 @@ const KEYS = [
   "alertPhoneNumber",
   "sendDailySalesEmail",
   "sendWeeklySalesEmail",
+  "sendMonthlyPlReportEmail",
+  "monthlyPlReportEmail",
+  "monthlyPlReportEmailCc",
 ] as const;
+
+const ICON = "h-3.5 w-3.5";
 
 export function NotificationsPanel({
   settings,
@@ -31,6 +43,7 @@ export function NotificationsPanel({
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
+  const d = p.isPending;
   const { toast } = useToast();
 
   const handlePushToggle = async (enabled: boolean) => {
@@ -69,6 +82,11 @@ export function NotificationsPanel({
     }
   };
 
+  // Recipient fields are useless while their channel is off — grey them out
+  // rather than hide them, so the configured values stay visible.
+  const emailOff = !v.enableEmailNotifications;
+  const smsOff = !v.enableSmsNotifications;
+
   return (
     <div className="space-y-6">
       <PanelHeader
@@ -77,89 +95,200 @@ export function NotificationsPanel({
       />
 
       <SettingsSection
+        icon={<Bell className="h-4 w-4" />}
         title="Channels"
         description="Turn off an entire channel here to silence every outbound message at this location."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
-        <SettingsSwitchRow label="Email" checked={!!v.enableEmailNotifications} onChange={(x) => p.setField("enableEmailNotifications", x)} disabled={p.isPending} />
-        <SettingsSwitchRow label="SMS" checked={!!v.enableSmsNotifications} onChange={(x) => p.setField("enableSmsNotifications", x)} disabled={p.isPending} />
-        <SettingsSwitchRow
-          label="Push"
-          checked={!!v.enablePushNotifications}
-          onChange={(x) => void handlePushToggle(x)}
-          disabled={p.isPending}
-        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <ToggleRow
+            label="Email"
+            hint="Alerts, reports and receipts sent by email."
+            checked={!!v.enableEmailNotifications}
+            onChange={(x) => p.setField("enableEmailNotifications", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="SMS"
+            hint="Urgent pings to the alert phone number."
+            checked={!!v.enableSmsNotifications}
+            onChange={(x) => p.setField("enableSmsNotifications", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Push"
+            hint="Browser notifications on this device."
+            checked={!!v.enablePushNotifications}
+            onChange={(x) => void handlePushToggle(x)}
+            disabled={d}
+          />
+        </div>
       </SettingsSection>
 
       <SettingsSection
+        icon={<Users className="h-4 w-4" />}
         title="Alert recipients"
         description="Who gets low-stock alerts, daily reports, and urgent SMS pings."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
+        aside={
+          emailOff ? (
+            <span className="rounded-full border border-line bg-canvas px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-muted-foreground">
+              Email off
+            </span>
+          ) : undefined
+        }
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
           <Field label="Low-stock alert email">
-            <Input
-              type="email"
-              maxLength={255}
-              value={v.lowStockAlertEmail ?? ""}
-              onChange={(e) => p.setField("lowStockAlertEmail", e.target.value)}
-              disabled={p.isPending}
-            />
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="email"
+                inputMode="email"
+                maxLength={255}
+                prefix={<Mail className={ICON} />}
+                placeholder="stock@business.com"
+                value={v.lowStockAlertEmail ?? ""}
+                onChange={(e) => p.setField("lowStockAlertEmail", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
           </Field>
-          <Field label="Low-stock alert CC">
-            <Input
-              type="text"
-              maxLength={512}
-              placeholder="a@x.com, b@y.com"
-              value={v.lowStockAlertEmailCc ?? ""}
-              onChange={(e) => p.setField("lowStockAlertEmailCc", e.target.value)}
-              disabled={p.isPending}
-            />
+          <Field label="Low-stock alert CC" hint="Comma-separated addresses.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={512}
+                prefix={<Mail className={ICON} />}
+                placeholder="a@x.com, b@y.com"
+                value={v.lowStockAlertEmailCc ?? ""}
+                onChange={(e) => p.setField("lowStockAlertEmailCc", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
           </Field>
           <Field label="Daily report email">
-            <Input
-              type="email"
-              maxLength={255}
-              value={v.dailyReportEmail ?? ""}
-              onChange={(e) => p.setField("dailyReportEmail", e.target.value)}
-              disabled={p.isPending}
-            />
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="email"
+                inputMode="email"
+                maxLength={255}
+                prefix={<Mail className={ICON} />}
+                placeholder="reports@business.com"
+                value={v.dailyReportEmail ?? ""}
+                onChange={(e) => p.setField("dailyReportEmail", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
           </Field>
-          <Field label="Daily report CC">
-            <Input
-              type="text"
-              maxLength={512}
-              placeholder="a@x.com, b@y.com"
-              value={v.dailyReportEmailCc ?? ""}
-              onChange={(e) => p.setField("dailyReportEmailCc", e.target.value)}
-              disabled={p.isPending}
-            />
+          <Field label="Daily report CC" hint="Comma-separated addresses.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={512}
+                prefix={<Mail className={ICON} />}
+                placeholder="a@x.com, b@y.com"
+                value={v.dailyReportEmailCc ?? ""}
+                onChange={(e) => p.setField("dailyReportEmailCc", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
           </Field>
-          <Field label="SMS alert phone number">
-            <Input
-              maxLength={20}
-              value={v.alertPhoneNumber ?? ""}
-              onChange={(e) => p.setField("alertPhoneNumber", e.target.value)}
-              disabled={p.isPending}
-            />
+          <Field
+            label="SMS alert phone number"
+            hint={smsOff ? "Turn the SMS channel on to use this." : undefined}
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="tel"
+                inputMode="tel"
+                maxLength={20}
+                prefix={<Phone className={ICON} />}
+                placeholder="+255 712 345 678"
+                value={v.alertPhoneNumber ?? ""}
+                onChange={(e) => p.setField("alertPhoneNumber", e.target.value)}
+                disabled={d || smsOff}
+              />
+            )}
           </Field>
         </div>
-        <SettingsSwitchRow label="Daily sales summary email" checked={!!v.sendDailySalesEmail} onChange={(x) => p.setField("sendDailySalesEmail", x)} disabled={p.isPending} />
-        <SettingsSwitchRow label="Weekly sales summary email" checked={!!v.sendWeeklySalesEmail} onChange={(x) => p.setField("sendWeeklySalesEmail", x)} disabled={p.isPending} />
       </SettingsSection>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+      <SettingsSection
+        icon={<BellRing className="h-4 w-4" />}
+        title="Recurring summaries"
+        description="Scheduled sales digests sent to the daily report recipients above."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
+            label="Daily sales summary"
+            hint="Yesterday's takings, sent each morning."
+            checked={!!v.sendDailySalesEmail}
+            onChange={(x) => p.setField("sendDailySalesEmail", x)}
+            disabled={d || emailOff}
+          />
+          <ToggleRow
+            label="Weekly sales summary"
+            hint="The week in review, sent on Mondays."
+            checked={!!v.sendWeeklySalesEmail}
+            onChange={(x) => p.setField("sendWeeklySalesEmail", x)}
+            disabled={d || emailOff}
+          />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        icon={<FileText className="h-4 w-4" />}
+        title="Monthly statements"
+        description="The profit & loss statement for the month just ended, sent on the morning of the 1st with a shareable link. Its own recipients, so it can go to your accountant."
+      >
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <ToggleRow
+              label="Monthly profit & loss"
+              hint="Last month's statement, emailed on the 1st."
+              checked={!!v.sendMonthlyPlReportEmail}
+              onChange={(x) => p.setField("sendMonthlyPlReportEmail", x)}
+              disabled={d || emailOff}
+            />
+          </div>
+          <Field label="Statement email">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="email"
+                inputMode="email"
+                maxLength={255}
+                prefix={<Mail className={ICON} />}
+                placeholder="accounts@business.com"
+                value={v.monthlyPlReportEmail ?? ""}
+                onChange={(e) => p.setField("monthlyPlReportEmail", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
+          </Field>
+          <Field label="Statement CC" hint="Comma-separated addresses.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={512}
+                prefix={<Mail className={ICON} />}
+                placeholder="owner@business.com, cfo@business.com"
+                value={v.monthlyPlReportEmailCc ?? ""}
+                onChange={(e) => p.setField("monthlyPlReportEmailCc", e.target.value)}
+                disabled={d || emailOff}
+              />
+            )}
+          </Field>
+        </div>
+      </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

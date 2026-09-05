@@ -5,13 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { FieldHint, standaloneLabelClass } from "@/components/ui/field";
 
 interface SettingsSectionProps {
   title?: string;
   description?: string;
+  /** Rendered in a 34px icon box beside the title (lucide icon, h-4 w-4). */
+  icon?: ReactNode;
+  /** `danger` frames destructive sections in the negative tint. */
+  tone?: "default" | "danger";
+  /** Right-aligned header slot — a badge, count, or per-section action. */
+  aside?: ReactNode;
   children: ReactNode;
   onSave?: () => void;
+  /** Re-seed the section from the persisted record; shows a ghost Discard while dirty. */
+  onDiscard?: () => void;
   isPending?: boolean;
   isDirty?: boolean;
   footer?: ReactNode;
@@ -30,49 +40,95 @@ interface SettingsSectionProps {
 export function SettingsSection({
   title,
   description,
+  icon,
+  tone = "default",
+  aside,
   children,
   onSave,
+  onDiscard,
   isPending = false,
   isDirty = false,
   footer,
 }: SettingsSectionProps) {
   return (
-    <Card className="rounded-xl shadow-sm">
+    <Card
+      className={cn(
+        "rounded-xl shadow-sm",
+        tone === "danger" && "border-neg/40",
+      )}
+    >
       <CardContent className="pt-5 pb-4 space-y-4">
-        {(title || description) && (
-          <div>
-            {title && (
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {title}
-              </h3>
+        {(title || description || aside) && (
+          <div className="flex items-start gap-3">
+            {icon && (
+              <span
+                className={cn(
+                  "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-line bg-canvas text-ink-2",
+                  tone === "danger" && "border-neg/30 bg-neg-tint text-neg",
+                )}
+              >
+                {icon}
+              </span>
             )}
-            {description && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-            )}
+            <div className="min-w-0 flex-1">
+              {title && (
+                <h3 className="text-base font-semibold tracking-[-0.01em] text-ink">
+                  {title}
+                </h3>
+              )}
+              {description && (
+                <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                  {description}
+                </p>
+              )}
+            </div>
+            {aside && <div className="shrink-0">{aside}</div>}
           </div>
         )}
 
         <div className="space-y-3">{children}</div>
 
         {(footer || onSave) && (
-          <div className="flex items-center justify-between gap-3 border-t pt-3">
-            <div>{footer}</div>
+          <div className="flex flex-wrap items-center gap-2.5 border-t border-line pt-3">
+            {footer && <div className="min-w-0">{footer}</div>}
             {onSave && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={onSave}
-                disabled={isPending || !isDirty}
-              >
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save changes
-              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                {onDiscard && isDirty && !isPending && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDiscard()}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Discard
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={onSave}
+                  disabled={isPending || !isDirty}
+                >
+                  {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isPending ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
             )}
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * "" → null, otherwise a finite number — for optional numeric settings bound
+ * to `<input type="number">`. Non-numeric junk collapses to null too.
+ */
+export function parseOptionalNumber(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Small labelled wrapper for an input inside a SettingsSection. */
@@ -86,12 +142,10 @@ export function SettingsField({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
+    <div className="min-w-0 space-y-[7px]">
+      <label className={standaloneLabelClass}>{label}</label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <FieldHint>{hint}</FieldHint>}
     </div>
   );
 }

@@ -41,6 +41,14 @@ const nextConfig = {
         port: "",
       },
       {
+        // Current uploads bucket (R2 behind a custom domain).
+        protocol: "https",
+        hostname: "media.settlo.co.tz",
+        port: "",
+      },
+      {
+        // Previous R2 public dev domain — kept so images stored before the
+        // custom domain was set up keep resolving.
         protocol: "https",
         hostname: "pub-fad679d0263c4fa9acb979076c137440.r2.dev",
         port: "",

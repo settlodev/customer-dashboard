@@ -10,7 +10,7 @@ import type { FormResponse } from "@/types/types";
  * the keys this section owns and the persisted record, it exposes:
  *  - `values`: local edit state
  *  - `setField(name, value)`: typed setter
- *  - `isDirty`: true when local state diverges from persisted
+ *  - `isDirty` / `dirtyCount`: whether (and how many) fields diverge
  *  - `save()`: PUTs only the changed fields in this section
  *  - `reset()`: re-seed local state from the persisted object
  *
@@ -46,18 +46,22 @@ export function useEntitySettingsPanel<T extends object, K extends keyof T>(
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const isDirty = useMemo(() => {
+  /** How many of this section's keys diverge from the persisted record. */
+  const dirtyCount = useMemo(() => {
+    let n = 0;
     for (const k of keys) {
       const a = values[k];
       const b = baseline[k];
       if (Array.isArray(a) || Array.isArray(b)) {
-        if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) return true;
+        if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) n += 1;
       } else if ((a ?? null) !== (b ?? null)) {
-        return true;
+        n += 1;
       }
     }
-    return false;
+    return n;
   }, [values, baseline, keys]);
+
+  const isDirty = dirtyCount > 0;
 
   const setField = <P extends K>(name: P, next: T[P] | null | undefined) => {
     setValues((prev) => ({ ...prev, [name]: next as T[P] }));
@@ -104,5 +108,5 @@ export function useEntitySettingsPanel<T extends object, K extends keyof T>(
     setBaseline(next);
   };
 
-  return { values, setField, isDirty, isPending, save, reset };
+  return { values, setField, isDirty, dirtyCount, isPending, save, reset };
 }

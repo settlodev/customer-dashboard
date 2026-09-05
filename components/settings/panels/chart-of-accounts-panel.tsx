@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { CornerDownRight, Hash, Landmark, Layers, Loader2, Plus, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlInput,
+  ControlTextarea,
+  StandaloneField as Field,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +18,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,6 +28,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
+import {
+  RowTag,
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
 import { OpeningBalanceSection } from "../opening-balance/opening-balance-section";
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import {
@@ -214,15 +226,31 @@ export function ChartOfAccountsPanel() {
     )
     .map((a) => a.id);
 
+  // Sub-lines are indented under the account they roll into, so the tree the
+  // parent picker builds is visible in the flat list the API returns. Purely
+  // cosmetic — row order stays exactly as the service sent it.
+  const byId = new Map(items.map((a) => [a.id, a] as const));
+  const depthOf = (a: ChartOfAccount) => {
+    let depth = 0;
+    let cursor = a.parentId ? byId.get(a.parentId) : undefined;
+    // Bounded walk: a cycle in bad data must not hang the render.
+    while (cursor && depth < 4) {
+      depth += 1;
+      cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+    }
+    return depth;
+  };
+
   return (
     <SettingsSection
       title="Chart of accounts"
       description="The general-ledger account structure for this location."
+      icon={<Landmark className="h-4 w-4" />}
       footer={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={openNew}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add account
+              <Plus className="h-3.5 w-3.5" /> Add account
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -231,260 +259,299 @@ export function ChartOfAccountsPanel() {
                 {editing ? `Edit ${editing.code}` : "New account"}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Code</Label>
-                  <Input
-                    value={form.code}
-                    onChange={(e) =>
-                      setForm({ ...form, code: e.target.value })
-                    }
-                    placeholder="1100"
-                    maxLength={20}
-                  />
-                </div>
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={form.accountType}
-                    onValueChange={(v) => {
-                      const nextType = v as AccountType;
-                      setForm({
-                        ...form,
-                        accountType: nextType,
-                        normalBalance: NORMAL_BALANCE_BY_TYPE[nextType],
-                        // A section, parent or sub-type picked for the
-                        // previous account type is almost never valid for
-                        // the new one — stale values here get silently
-                        // submitted and rejected by the backend, so reset
-                        // all three. Sub-type in particular is validated
-                        // as a (code, account type) pair server-side, so
-                        // carrying one across a type change is a
-                        // guaranteed INVALID_ACCOUNT_SUB_TYPE. The default
-                        // section is type-specific (see
-                        // DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE), not just
-                        // "whichever section sorts first" — expenses must
-                        // default to Operating Expenses, not Cost of Sales.
-                        plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE[nextType],
-                        parentId: "",
-                        accountSubType: "",
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).map(
-                        (t) => (
-                          <SelectItem key={t} value={t}>
-                            {ACCOUNT_TYPE_LABELS[t]}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+                <Field label="Code" hint="Ledger number, e.g. 1100." required>
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      mono
+                      prefix={<Hash className="h-3.5 w-3.5" />}
+                      value={form.code}
+                      onChange={(e) =>
+                        setForm({ ...form, code: e.target.value })
+                      }
+                      placeholder="1100"
+                      maxLength={20}
+                    />
+                  )}
+                </Field>
+                <Field label="Type" required>
+                  {(id) => (
+                    <Select
+                      value={form.accountType}
+                      onValueChange={(v) => {
+                        const nextType = v as AccountType;
+                        setForm({
+                          ...form,
+                          accountType: nextType,
+                          normalBalance: NORMAL_BALANCE_BY_TYPE[nextType],
+                          // A section, parent or sub-type picked for the
+                          // previous account type is almost never valid for
+                          // the new one — stale values here get silently
+                          // submitted and rejected by the backend, so reset
+                          // all three. Sub-type in particular is validated
+                          // as a (code, account type) pair server-side, so
+                          // carrying one across a type change is a
+                          // guaranteed INVALID_ACCOUNT_SUB_TYPE. The default
+                          // section is type-specific (see
+                          // DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE), not just
+                          // "whichever section sorts first" — expenses must
+                          // default to Operating Expenses, not Cost of Sales.
+                          plSection: DEFAULT_PL_SECTION_BY_ACCOUNT_TYPE[nextType],
+                          parentId: "",
+                          accountSubType: "",
+                        });
+                      }}
+                    >
+                      <SelectTrigger id={id} className={controlSelectTriggerClass}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).map(
+                          (t) => (
+                            <SelectItem key={t} value={t}>
+                              {ACCOUNT_TYPE_LABELS[t]}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </Field>
               </div>
               {PL_SECTIONS_BY_ACCOUNT_TYPE[form.accountType].length > 0 && (
-                <div>
-                  <Label>P&L section</Label>
-                  <Select
-                    value={form.plSection ?? undefined}
-                    onValueChange={(v) =>
-                      setForm({
-                        ...form,
-                        plSection: v as PlSection,
-                        // The parent picker below is filtered by section —
-                        // a parent chosen under the old section is very
-                        // likely no longer a legal (or even visible) choice.
-                        parentId: "",
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PL_SECTIONS_BY_ACCOUNT_TYPE[form.accountType].map(
-                        (s) => (
-                          <SelectItem key={s} value={s}>
-                            {PL_SECTION_LABELS[s]}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Field label="P&L section">
+                  {(id) => (
+                    <Select
+                      value={form.plSection ?? undefined}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          plSection: v as PlSection,
+                          // The parent picker below is filtered by section —
+                          // a parent chosen under the old section is very
+                          // likely no longer a legal (or even visible) choice.
+                          parentId: "",
+                        })
+                      }
+                    >
+                      <SelectTrigger id={id} className={controlSelectTriggerClass}>
+                        <SelectValue placeholder="Select a section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PL_SECTIONS_BY_ACCOUNT_TYPE[form.accountType].map(
+                          (s) => (
+                            <SelectItem key={s} value={s}>
+                              {PL_SECTION_LABELS[s]}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </Field>
               )}
               {(form.plSection || parentTypes) && (
-                <div>
-                  <Label>Reports under</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={form.parentId === "" ? "default" : "outline"}
-                      onClick={() => setForm({ ...form, parentId: "" })}
-                    >
-                      Its own line
-                    </Button>
-                    <div className="min-w-0 flex-1">
-                      <ChartOfAccountSelector
-                        value={form.parentId || undefined}
-                        onChange={(id) =>
-                          setForm({ ...form, parentId: id })
-                        }
-                        excludeIds={parentExcludeIds}
-                        placeholder="Choose a parent account"
-                      />
+                // One wording for both classes: the candidate list is
+                // filtered to exactly what will nest — same section for
+                // a P&L account, same type for a balance-sheet one — so
+                // anything offered here does roll up.
+                <Field
+                  label="Reports under"
+                  hint="Pick a parent to report this account as a sub-line rolled into that account's total, or leave it as its own line."
+                >
+                  {(id) => (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <Button
+                        id={id}
+                        type="button"
+                        size="sm"
+                        variant={form.parentId === "" ? "default" : "outline"}
+                        onClick={() => setForm({ ...form, parentId: "" })}
+                      >
+                        Its own line
+                      </Button>
+                      <div className="min-w-0 flex-1">
+                        <ChartOfAccountSelector
+                          value={form.parentId || undefined}
+                          onChange={(nextParentId) =>
+                            setForm({ ...form, parentId: nextParentId })
+                          }
+                          excludeIds={parentExcludeIds}
+                          placeholder="Choose a parent account"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  {/* One wording for both classes: the candidate list is
-                      filtered to exactly what will nest — same section for
-                      a P&L account, same type for a balance-sheet one — so
-                      anything offered here does roll up. */}
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Pick a parent to report this account as a sub-line
-                    rolled into that account&apos;s total, or leave it as
-                    its own line.
-                  </p>
-                </div>
+                  )}
+                </Field>
               )}
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  value={form.description ?? ""}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  rows={2}
-                />
-              </div>
-              <div>
-                <Label>Sub-type (optional)</Label>
-                {subTypes.length === 0 ? (
-                  // Catalogue unavailable — the accounting service predates
-                  // /sub-types, or the call failed. Deliberately read-only
-                  // rather than free text: the server validates sub-type
-                  // against the same catalogue, so anything typed here would
-                  // come back INVALID_ACCOUNT_SUB_TYPE on save. A disabled
-                  // field is a visibly unavailable control instead of a
-                  // save-time error with no obvious cause.
-                  //
-                  // The account's existing value still round-trips untouched
-                  // — it stays in form state and submits unchanged, which the
-                  // server grandfathers.
-                  <Input
-                    value={form.accountSubType || ""}
-                    placeholder="None"
-                    disabled
-                    readOnly
+              <Field label="Name" required>
+                {(id) => (
+                  <ControlInput
+                    id={id}
+                    prefix={<Tag className="h-3.5 w-3.5" />}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Office rent"
                   />
-                ) : (
-                  <Select
-                    value={form.accountSubType || NO_SUB_TYPE}
-                    onValueChange={(v) =>
-                      setForm({
-                        ...form,
-                        accountSubType: v === NO_SUB_TYPE ? "" : v,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_SUB_TYPE}>None</SelectItem>
-                      {subTypeChoices.map((s) => (
-                        <SelectItem key={s.code} value={s.code}>
-                          {s.label} · {s.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 )}
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {subTypes.length === 0
+              </Field>
+              <Field label="Description" optional>
+                {(id) => (
+                  <ControlTextarea
+                    id={id}
+                    value={form.description ?? ""}
+                    onChange={(e) =>
+                      setForm({ ...form, description: e.target.value })
+                    }
+                    rows={2}
+                    placeholder="What belongs in this account?"
+                  />
+                )}
+              </Field>
+              <Field
+                label="Sub-type"
+                optional
+                hint={
+                  subTypes.length === 0
                     ? "Sub-type options are unavailable right now, so this field can't be changed. Any existing value is kept as it is."
-                    : "Groups this account for analytics. Reporting matches these codes exactly, so pick one rather than inventing a label."}
-                </p>
-              </div>
+                    : "Groups this account for analytics. Reporting matches these codes exactly, so pick one rather than inventing a label."
+                }
+              >
+                {(id) =>
+                  subTypes.length === 0 ? (
+                    // Catalogue unavailable — the accounting service predates
+                    // /sub-types, or the call failed. Deliberately read-only
+                    // rather than free text: the server validates sub-type
+                    // against the same catalogue, so anything typed here would
+                    // come back INVALID_ACCOUNT_SUB_TYPE on save. A disabled
+                    // field is a visibly unavailable control instead of a
+                    // save-time error with no obvious cause.
+                    //
+                    // The account's existing value still round-trips untouched
+                    // — it stays in form state and submits unchanged, which the
+                    // server grandfathers.
+                    <ControlInput
+                      id={id}
+                      mono
+                      prefix={<Layers className="h-3.5 w-3.5" />}
+                      value={form.accountSubType || ""}
+                      placeholder="None"
+                      disabled
+                      readOnly
+                    />
+                  ) : (
+                    <Select
+                      value={form.accountSubType || NO_SUB_TYPE}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          accountSubType: v === NO_SUB_TYPE ? "" : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger id={id} className={controlSelectTriggerClass}>
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SUB_TYPE}>None</SelectItem>
+                        {subTypeChoices.map((s) => (
+                          <SelectItem key={s.code} value={s.code}>
+                            {s.label} · {s.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                }
+              </Field>
             </div>
             <DialogFooter>
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={isPending}
               >
                 Cancel
               </Button>
-              <Button onClick={submit} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                {editing ? "Save" : "Create"}
+              <Button
+                onClick={submit}
+                disabled={isPending || !form.code.trim() || !form.name.trim()}
+              >
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isPending
+                  ? "Saving…"
+                  : editing
+                    ? "Save changes"
+                    : "Create account"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       }
     >
-      <div className="space-y-3">
-        <OpeningBalanceSection accounts={items} />
-        <Card className="border-line">
-        <CardContent className="px-0 py-0">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Loading…
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No accounts defined yet.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {items.map((a) => (
-                  <tr key={a.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-mono text-xs">{a.code}</td>
-                    <td className="px-4 py-3">
-                      {a.name}
-                      {a.systemAccount && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                          System
-                        </span>
+      <OpeningBalanceSection accounts={items} />
+      <SettingsTableCard
+        loading={loading}
+        isEmpty={items.length === 0}
+        emptyLabel="No accounts defined yet."
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className={tableHeadRowClass}>
+              <th className={thClass}>Code</th>
+              <th className={thClass}>Name</th>
+              <th className={thClass}>Type</th>
+              <th className={thClass}>Status</th>
+              <th className={`${thClass} text-right`}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((a) => {
+              const depth = depthOf(a);
+              return (
+                <tr key={a.id} className={trClass}>
+                  <td className={`${tdClass} font-mono text-[12px]`}>
+                    <span
+                      className="flex items-center gap-1.5"
+                      style={{ paddingLeft: depth * 14 }}
+                    >
+                      {depth > 0 && (
+                        <CornerDownRight className="h-3 w-3 shrink-0 text-ink-3" />
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {ACCOUNT_TYPE_LABELS[a.accountType]}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={() => onToggle(a)}
-                      >
-                        {a.active ? "Active" : "Inactive"}
-                      </Button>
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                      {a.code}
+                    </span>
+                  </td>
+                  <td className={tdClass}>
+                    {a.name}
+                    {a.systemAccount && <RowTag>System</RowTag>}
+                  </td>
+                  <td className={`${tdClass} whitespace-nowrap text-ink-2`}>
+                    {ACCOUNT_TYPE_LABELS[a.accountType]}
+                  </td>
+                  <td className={tdClass}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isPending}
+                      onClick={() => onToggle(a)}
+                      title={
+                        a.active
+                          ? "Deactivate this account"
+                          : "Activate this account"
+                      }
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          a.active ? "bg-pos" : "bg-muted-2"
+                        }`}
+                      />
+                      {a.active ? "Active" : "Inactive"}
+                    </Button>
+                  </td>
+                  <td className={tdActionsClass}>
+                    <div className="inline-flex items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -493,24 +560,21 @@ export function ChartOfAccountsPanel() {
                         Edit
                       </Button>
                       {!a.systemAccount && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <ConfirmDeleteButton
                           disabled={isPending}
-                          onClick={() => onDelete(a)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                        </Button>
+                          onConfirm={() => onDelete(a)}
+                          title={`Delete ${a.code} · ${a.name}?`}
+                          description="Entries already posted to this account keep their history, but it can no longer be picked for new postings, mappings or sub-lines."
+                        />
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
-      </div>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </SettingsTableCard>
     </SettingsSection>
   );
 }

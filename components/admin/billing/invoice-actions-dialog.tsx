@@ -45,6 +45,7 @@ import {
 } from "@/types/admin/billing";
 interface InvoiceActionsDialogProps {
   businessId: string;
+  businessName: string;
   invoice: InvoiceResponse;
   /** entityId -> location/warehouse/store name, for the line-item breakdown. */
   entityNames: Record<string, string>;
@@ -194,6 +195,7 @@ function formatDate(value: string | null | undefined): string {
 
 export function InvoiceActionsDialog({
   businessId,
+  businessName,
   invoice,
   entityNames,
   actorNames,
@@ -327,6 +329,11 @@ export function InvoiceActionsDialog({
             Issued {formatDate(invoice.invoiceDate)} · Total{" "}
             {formatMoney(invoice.totalAmount)}
           </DialogDescription>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11.5px] text-muted-foreground">
+            <span>{businessName}</span>
+            {invoice.customerName && <span>· {invoice.customerName}</span>}
+            {invoice.customerEmail && <span>· {invoice.customerEmail}</span>}
+          </div>
         </DialogHeader>
 
         {/* Line items */}

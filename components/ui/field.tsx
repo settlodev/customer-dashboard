@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { FormLabel } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
 
 /**
  * Reusable form-control primitives — the shared "input field" look used across
@@ -135,17 +136,23 @@ export interface ControlInputProps
   suffix?: React.ReactNode;
   /** Tabular-mono font for numeric inputs. */
   mono?: boolean;
+  /** 36px box instead of the default 44px — for toolbars and nav filters. */
+  compact?: boolean;
 }
 
 export const ControlInput = React.forwardRef<HTMLInputElement, ControlInputProps>(
   function ControlInput(
-    { prefix, suffix, mono, className, disabled, ...props },
+    { prefix, suffix, mono, compact, className, disabled, ...props },
     ref,
   ) {
     return (
       <div
         data-disabled={disabled ? "" : undefined}
-        className={cn(controlBoxClass, suffix ? "pr-0" : "")}
+        className={cn(
+          controlBoxClass,
+          suffix ? "pr-0" : "",
+          compact && "h-9 gap-2 px-2.5",
+        )}
       >
         {prefix && (
           <span className="grid shrink-0 place-items-center text-muted-2">
@@ -302,5 +309,172 @@ export function SegmentedBoolean({
       className={className}
       stretch={stretch}
     />
+  );
+}
+
+// ── Radio cards ─────────────────────────────────────────────────────
+
+/**
+ * Mutually exclusive options as a grid of cards (title + description + radio
+ * dot). Use where each option deserves a sentence — modes, layouts, density —
+ * instead of a bare `<Select>`. Override the column count via `className`.
+ */
+export function RadioCards<T extends string>({
+  value,
+  onChange,
+  options,
+  disabled,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly {
+    value: T;
+    label: string;
+    description?: string;
+    icon?: React.ReactNode;
+  }[];
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      className={cn("grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3", className)}
+    >
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={on}
+            key={o.value}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(o.value)}
+            className={cn(
+              "flex items-start gap-3 rounded-[10px] border p-3.5 text-left transition outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60",
+              on
+                ? "border-primary bg-primary/[0.06]"
+                : "border-line-2 bg-card hover:border-muted-2",
+            )}
+          >
+            <span
+              className={cn(
+                "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-[1.6px]",
+                on ? "border-primary" : "border-muted-2",
+              )}
+            >
+              {on && <span className="h-2 w-2 rounded-full bg-primary" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-[13px] font-medium leading-tight text-ink">
+                {o.icon && <span className="text-muted-foreground">{o.icon}</span>}
+                {o.label}
+              </span>
+              {o.description && (
+                <span className="mt-1 block text-[12px] leading-snug text-muted-foreground">
+                  {o.description}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Standalone field (label + control + hint, no react-hook-form) ───
+
+/**
+ * Label + control + hint for controlled inputs that live outside a
+ * `FormField` (settings panels). `children` is a render-prop receiving the
+ * generated id so the label's `htmlFor` lands on the control.
+ */
+export function StandaloneField({
+  label,
+  hint,
+  optional,
+  required,
+  className,
+  children,
+}: {
+  label: string;
+  hint?: React.ReactNode;
+  optional?: boolean;
+  required?: boolean;
+  className?: string;
+  children: (id: string) => React.ReactNode;
+}) {
+  const id = React.useId();
+  return (
+    <div className={cn("min-w-0 space-y-[7px]", className)}>
+      <label htmlFor={id} className={standaloneLabelClass}>
+        {label}
+        {required && <span className="text-primary">*</span>}
+        {optional && (
+          <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+            Optional
+          </span>
+        )}
+      </label>
+      {children(id)}
+      {hint && <FieldHint>{hint}</FieldHint>}
+    </div>
+  );
+}
+
+// ── Toggle row ──────────────────────────────────────────────────────
+
+/**
+ * Boxed switch row — the product form's `toggleRow` look (label + hint on the
+ * left, switch on the right, hairline border on a surface tint). Use it for
+ * boolean settings that sit in a grid of peers; for a bare inline switch use
+ * `SettingsSwitchRow` instead.
+ */
+export function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const id = React.useId();
+  return (
+    <div
+      className={cn(
+        "flex items-start justify-between gap-4 rounded-lg border border-line bg-surface px-4 py-3.5 transition-colors",
+        checked && "border-primary/40 bg-primary/[0.04]",
+        disabled && "opacity-60",
+        className,
+      )}
+    >
+      <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
+        <span className="block text-[13px] font-medium leading-tight text-ink">
+          {label}
+        </span>
+        {hint && (
+          <span className="mt-0.5 block text-[12px] leading-snug text-muted-foreground">
+            {hint}
+          </span>
+        )}
+      </label>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        className="mt-0.5 shrink-0"
+      />
+    </div>
   );
 }

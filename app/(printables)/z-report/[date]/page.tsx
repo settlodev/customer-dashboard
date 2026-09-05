@@ -21,6 +21,11 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * server component, one fan-out over the day's sources plus the letterhead),
  * and is gated on the same permission as the on-screen report so the print
  * URL can't be used to read around the page guard.
+ *
+ * <p>Reached from the day page's Print button and from the PDF action on
+ * each row of the Z-report list, so it opens the print / save-as-PDF dialog
+ * itself once the letterhead logo has loaded — the same behaviour as every
+ * other "Download PDF" route. The toolbar stays for a re-print.
  */
 export default async function CombinedZReportPage({
   params,
@@ -46,7 +51,7 @@ export default async function CombinedZReportPage({
   if (!day.local && !day.vfd) notFound();
 
   return (
-    <PrintableDocument documentTitle={`Z-Report — ${date}`}>
+    <PrintableDocument documentTitle={`Z-Report — ${date}`} autoPrint>
       <CombinedZReportSheet
         day={day}
         locationName={location?.name ?? null}

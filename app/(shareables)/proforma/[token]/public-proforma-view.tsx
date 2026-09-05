@@ -3,25 +3,22 @@
 import { useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, FileText, Loader2 } from "lucide-react";
 
+import Link from "next/link";
 import { PrintableDocument } from "@/components/documents";
-import type {
-  BusinessDocumentData,
-  BusinessIdentity,
-  LineItem,
-} from "@/components/documents";
 import {
   ActionBarSpacer,
   PublicActionBar,
 } from "@/components/documents/PublicActionBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_CURRENCY, formatMoney } from "@/lib/helpers";
+import { formatMoney } from "@/lib/helpers";
+import {
+  buildInvoiceDocument,
+  buildProformaDocument,
+} from "@/lib/invoicing-document";
 import { acceptPublicProforma } from "@/lib/actions/invoicing-public-actions";
 import {
-  INVOICE_PAYMENT_STATUS_LABELS,
   PROFORMA_STATUS_LABELS,
-  type InvoicePaymentStatus,
-  type ProformaStatus,
   type PublicArInvoice,
   type PublicProforma,
 } from "@/types/invoicing/type";
@@ -31,178 +28,7 @@ interface Props {
   initial: PublicProforma;
 }
 
-const SETTLO_PRIMARY = "#ED7B40";
-const SETTLO_SECONDARY = "#1E293B";
-const THEME = { primaryColor: SETTLO_PRIMARY, secondaryColor: SETTLO_SECONDARY };
-
-type Tone = "neutral" | "success" | "warning" | "danger" | "info";
-
-const PROFORMA_TONE: Record<ProformaStatus, Tone> = {
-  DRAFT: "neutral",
-  SENT: "info",
-  ACCEPTED: "success",
-  CONVERTED: "success",
-  DECLINED: "danger",
-  EXPIRED: "warning",
-  CANCELLED: "neutral",
-};
-
-const PAYMENT_TONE: Record<InvoicePaymentStatus, Tone> = {
-  UNPAID: "danger",
-  PARTIALLY_PAID: "warning",
-  PAID: "success",
-};
-
 const num = (v: number | null | undefined) => Number(v ?? 0);
-
-const composeAddress = (raw?: string | null): string[] =>
-  raw
-    ? raw
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean)
-    : [];
-
-function issuerFrom(d: {
-  businessName?: string | null;
-  businessTin?: string | null;
-  businessVrn?: string | null;
-  locationName?: string | null;
-  locationAddress?: string | null;
-  issuerPhone?: string | null;
-  issuerEmail?: string | null;
-  locationCity?: string | null;
-  locationRegion?: string | null;
-  issuerCountry?: string | null;
-}): BusinessIdentity {
-  // Address block: the stored address lines, then a "City, Region, Country" line.
-  const addressLines = composeAddress(d.locationAddress);
-  const locale = [d.locationCity, d.locationRegion, d.issuerCountry]
-    .map((s) => s?.trim())
-    .filter(Boolean)
-    .join(", ");
-  if (locale) addressLines.push(locale);
-
-  return {
-    // Prefer the location's identity (name + address + tax IDs); fall back to
-    // the business name only when the location name is missing.
-    name: d.locationName?.trim() || d.businessName?.trim() || "Business",
-    addressLines,
-    tin: d.businessTin ?? undefined,
-    vrn: d.businessVrn ?? undefined,
-    // Contact resolved location-first with a business fallback on the server.
-    phone: d.issuerPhone?.trim() || undefined,
-    email: d.issuerEmail?.trim() || undefined,
-  };
-}
-
-function proformaToData(p: PublicProforma): BusinessDocumentData {
-  const items: LineItem[] = p.lines.map((l) => ({
-    name: l.description || "—",
-    quantity: num(l.quantity),
-    unitPrice: num(l.unitPrice),
-    amount: num(l.lineTotal),
-  }));
-  return {
-    meta: {
-      type: "quote",
-      titleOverride: "PROFORMA INVOICE",
-      documentNumber: p.proformaNumber,
-      issueDate: p.issueDate || p.validUntil || "",
-      dueDate: p.validUntil ?? undefined,
-      status: {
-        label: PROFORMA_STATUS_LABELS[p.status],
-        tone: PROFORMA_TONE[p.status],
-      },
-    },
-    issuer: issuerFrom(p),
-    recipient: p.customerName
-      ? {
-          name: p.customerName,
-          phone: p.customerPhone ?? undefined,
-          email: p.customerEmail ?? undefined,
-          tin: p.customerTin ?? undefined,
-        }
-      : undefined,
-    items,
-    totals: {
-      subtotal: num(p.subtotalAmount),
-      taxes:
-        num(p.taxAmount) > 0
-          ? [{ label: "Tax", rate: 0, amount: num(p.taxAmount) }]
-          : undefined,
-      discount:
-        num(p.discountAmount) > 0
-          ? { label: "Discount", amount: num(p.discountAmount) }
-          : undefined,
-      total: num(p.totalAmount),
-      amountDue: num(p.totalAmount),
-    },
-    currency: p.currencyCode || DEFAULT_CURRENCY,
-    notes: p.notes ?? undefined,
-    footerMessage: "This is a proforma invoice and is not a tax invoice.",
-  };
-}
-
-function invoiceToData(inv: PublicArInvoice): BusinessDocumentData {
-  const items: LineItem[] = inv.lines.map((l) => ({
-    name: l.description || "—",
-    quantity: num(l.quantity),
-    unitPrice: num(l.unitPrice),
-    amount: num(l.lineTotal),
-  }));
-  const notes = [inv.paymentInstructionsText, inv.paymentDetailsText]
-    .filter((s): s is string => Boolean(s && s.trim()))
-    .join("\n\n");
-  return {
-    meta: {
-      type: "invoice",
-      documentNumber: inv.invoiceNumber,
-      issueDate: inv.issueDate,
-      dueDate: inv.dueDate ?? undefined,
-      status: {
-        label: INVOICE_PAYMENT_STATUS_LABELS[inv.paymentStatus],
-        tone: PAYMENT_TONE[inv.paymentStatus],
-      },
-    },
-    issuer: issuerFrom(inv),
-    recipient: inv.customerName
-      ? {
-          name: inv.customerName,
-          phone: inv.customerPhone ?? undefined,
-          email: inv.customerEmail ?? undefined,
-          tin: inv.customerTin ?? undefined,
-        }
-      : undefined,
-    items,
-    totals: {
-      subtotal: num(inv.subtotalAmount),
-      taxes:
-        num(inv.taxAmount) > 0
-          ? [{ label: "Tax", rate: 0, amount: num(inv.taxAmount) }]
-          : undefined,
-      discount:
-        num(inv.discountAmount) > 0
-          ? { label: "Discount", amount: num(inv.discountAmount) }
-          : undefined,
-      total: num(inv.totalAmount),
-      payments:
-        num(inv.paidAmount) > 0
-          ? [
-              {
-                date: inv.issueDate,
-                method: "Payments received",
-                amount: num(inv.paidAmount),
-              },
-            ]
-          : undefined,
-      amountDue: num(inv.balanceDue),
-    },
-    currency: inv.currencyCode || DEFAULT_CURRENCY,
-    notes: notes || undefined,
-    footerMessage: "Thank you for your business and continued support",
-  };
-}
 
 export function PublicProformaView({ token, initial }: Props) {
   const [invoice, setInvoice] = useState<PublicArInvoice | null>(null);
@@ -222,38 +48,55 @@ export function PublicProformaView({ token, initial }: Props) {
       }
     });
 
-  // Once accepted, the proforma becomes an invoice — show that document.
+  // Just accepted: show the invoice that was created, and hand over its own
+  // link — this proforma link stays a snapshot of the quote from here on.
   if (invoice) {
-    const title = `${invoice.businessName?.trim() || invoice.locationName?.trim() || "Settlo"} - Invoice`;
+    const doc = buildInvoiceDocument(invoice, { payments: invoice.payments });
+    const invoiceHref = invoice.shareToken
+      ? `/inv/${encodeURIComponent(invoice.shareToken)}`
+      : null;
     return (
       <>
         <PrintableDocument
-          data={invoiceToData(invoice)}
-          theme={THEME}
-          documentTitle={title}
+          data={doc.data}
+          theme={doc.theme}
+          documentTitle={doc.documentTitle}
         />
         <ActionBarSpacer />
-        <PublicActionBar className="flex items-center gap-3 py-3.5">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
-          <p className="text-sm text-slate-700">
-            Accepted — this proforma is now invoice{" "}
-            <span className="font-semibold">{invoice.invoiceNumber}</span>.
+        <PublicActionBar className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2 text-sm text-slate-700">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+            <span>
+              Accepted — this proforma is now invoice{" "}
+              <span className="font-semibold">{invoice.invoiceNumber}</span>.
+            </span>
           </p>
+          {invoiceHref && (
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href={invoiceHref}>
+                <FileText className="mr-1.5 h-4 w-4" />
+                Open invoice link
+              </Link>
+            </Button>
+          )}
         </PublicActionBar>
       </>
     );
   }
 
-  const title = `${initial.businessName?.trim() || initial.locationName?.trim() || "Settlo"} - Proforma Invoice`;
+  const doc = buildProformaDocument(initial);
   const canAccept = initial.status === "SENT";
   const alreadyConverted = initial.status === "CONVERTED";
+  const convertedHref = initial.convertedInvoiceShareToken
+    ? `/inv/${encodeURIComponent(initial.convertedInvoiceShareToken)}`
+    : null;
 
   return (
     <>
       <PrintableDocument
-        data={proformaToData(initial)}
-        theme={THEME}
-        documentTitle={title}
+        data={doc.data}
+        theme={doc.theme}
+        documentTitle={doc.documentTitle}
       />
       <ActionBarSpacer />
 
@@ -288,22 +131,25 @@ export function PublicProformaView({ token, initial }: Props) {
             </>
           ) : alreadyConverted ? (
             <>
-              <p className="text-sm text-slate-600">
-                This proforma has already been accepted.
+              <p className="flex items-center gap-2 text-sm text-slate-600">
+                <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+                <span>
+                  This proforma was accepted and is now invoice{" "}
+                  <span className="font-semibold text-slate-900">
+                    {initial.convertedInvoiceNumber ?? "—"}
+                  </span>
+                  . This copy is the quote as accepted; payments are shown on
+                  the invoice.
+                </span>
               </p>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={accept}
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="mr-1.5 h-4 w-4" />
-                )}
-                View invoice
-              </Button>
+              {convertedHref && (
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link href={convertedHref}>
+                    <FileText className="mr-1.5 h-4 w-4" />
+                    View invoice
+                  </Link>
+                </Button>
+              )}
             </>
           ) : (
             <p className="text-sm text-slate-500">

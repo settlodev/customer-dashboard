@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { format, parseISO } from "date-fns";
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 import {
   buildBreakdownEntries,
   buildItemLabel,
+  EXPIRY_HORIZON_DAYS,
   fmtCost,
   fmtQty,
   STOCK_LENSES,
@@ -40,7 +42,11 @@ import type { StockCategory } from "@/types/stock-category/type";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { StockMovementExportButton } from "./stock-movement-export-button";
 
-type SortKey = "name" | "opening" | "in" | "out" | "net" | "closing" | "value";
+/** Sortable table columns. The URL may also carry `expiry` (no column of its own). */
+type SortKey = "name" | "opening" | "in" | "out" | "closing" | "value";
+
+const PILL =
+  "inline-flex h-[22px] items-center rounded-md px-2 font-mono text-[10.5px] font-semibold";
 
 /** Combobox needs a non-empty value for the "no filter" row; ids are UUIDs. */
 const ALL_CATEGORIES = "all";
@@ -89,6 +95,20 @@ function formatLastMovement(iso: string | null): string {
   return `${dateTimeFmt.format(d)} · ${clockFmt.format(d)}`;
 }
 
+/** Pill text for a row with stock in an expiring batch. */
+function expiryPillLabel(days: number | null): string {
+  if (days == null) return "Expiring";
+  if (days <= 0) return "Expired";
+  return `Expires ${days}d`;
+}
+
+/** "Sep 9, 2026" from a yyyy-MM-dd — parsed locally so the day never shifts. */
+function formatExpiryDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = parseISO(iso);
+  return Number.isNaN(d.getTime()) ? "—" : format(d, "MMM d, yyyy");
+}
+
 interface Props {
   summary: StockMovementReportSummary;
   rows: StockMovementReportRow[];
@@ -97,14 +117,14 @@ interface Props {
   /** URL state (all filtering happens server-side). */
   from: string;
   to: string;
-  asOf: string;
   search: string;
   /** Active stock-category id, or "" for every category. */
   categoryId: string;
   /** Every stock category at this destination, inactive ones included. */
   categories: StockCategory[];
   lens: StockLens;
-  sort: string; // "<col>,<dir>"
+  /** "<col>,<dir>" from the URL, or "" when the backend picks (name, or best match while searching). */
+  sort: string;
   page: number; // 1-based
   limit: number;
   pageSizes: number[];
@@ -124,7 +144,6 @@ export function StockMovementReport({
   closingSub,
   from,
   to,
-  asOf,
   search,
   categoryId,
   categories,
@@ -170,14 +189,25 @@ export function StockMovementReport({
     router.replace(`${pathname}?${qs.toString()}`, { scroll: false });
   };
 
-  const [sortCol, sortDir] = ((): [SortKey, "asc" | "desc"] => {
-    const [c, d] = (sort || "closing,desc").split(",");
-    return [(c as SortKey) || "closing", d === "asc" ? "asc" : "desc"];
+  // With no explicit sort the backend orders by name — unless a search is
+  // active, when it ranks by match and no column header should claim the order.
+  const [sortCol, sortDir] = ((): [string | null, "asc" | "desc"] => {
+    if (!sort) return [search ? null : "name", "asc"];
+    const [c, d] = sort.split(",");
+    return [c || "name", d === "desc" ? "desc" : "asc"];
   })();
 
   const onLens = (key: StockLens) => {
     setOpen(new Set());
-    setParams({ lens: key === "all" ? null : key, page: null });
+    const next: Record<string, string | null> = {
+      lens: key === "all" ? null : key,
+      page: null,
+    };
+    // The expiring lens is about urgency: soonest first unless the user has
+    // already chosen an order. Leaving it drops that implicit order again.
+    if (key === "expiring" && !sort) next.sort = "expiry,asc";
+    else if (key !== "expiring" && sort.startsWith("expiry")) next.sort = null;
+    setParams(next);
   };
 
   // Inactive categories stay listed — `active` gates assignment, not history,
@@ -216,7 +246,8 @@ export function StockMovementReport({
     });
   };
 
-  const attention = summary.low + summary.out + summary.dead;
+  const attention =
+    summary.low + summary.out + summary.dead + summary.expiring;
   const start = totalElements === 0 ? 0 : (page - 1) * limit + 1;
   const end = Math.min(page * limit, totalElements);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
@@ -270,7 +301,7 @@ export function StockMovementReport({
           <Stat
             label="Needs attention"
             value={fmtQty(attention)}
-            sub={`${summary.low} low · ${summary.out} out · ${summary.dead} dead`}
+            sub={`${summary.low} low · ${summary.out} out · ${summary.dead} dead · ${summary.expiring} expiring`}
             subTone="warn"
           />
         </div>
@@ -311,7 +342,6 @@ export function StockMovementReport({
             <StockMovementExportButton
               from={from}
               to={to}
-              asOf={asOf}
               search={search}
               categoryId={categoryId}
               lens={lens}
@@ -369,7 +399,6 @@ export function StockMovementReport({
                 <SortableTh label="Opening" sortKey="opening" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
                 <SortableTh label="In" sortKey="in" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
                 <SortableTh label="Out" sortKey="out" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
-                <SortableTh label="Net" sortKey="net" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
                 <SortableTh label="Closing" sortKey="closing" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
                 <SortableTh label="Value" sortKey="value" activeKey={sortCol} dir={sortDir} onSort={onSort} align="right" />
                 <th className="whitespace-nowrap px-4 py-3 text-right font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
@@ -380,13 +409,16 @@ export function StockMovementReport({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={8}>
                     <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
                       <PackageSearch className="h-9 w-9 text-muted-2" strokeWidth={1.4} />
-                      <p className="text-[15px] font-medium text-ink">No items match</p>
+                      <p className="text-[15px] font-medium text-ink">
+                        {lens === "expiring" ? "Nothing expiring soon" : "No items match"}
+                      </p>
                       <p className="text-[13px] text-muted-foreground">
-                        Try a different lens or category, or clear your
-                        search.
+                        {lens === "expiring"
+                          ? `No batch with stock on hand expires within the next ${EXPIRY_HORIZON_DAYS} days.`
+                          : "Try a different lens or category, or clear your search."}
                       </p>
                     </div>
                   </td>
@@ -418,15 +450,6 @@ export function StockMovementReport({
                   </td>
                   <td className="px-4 py-3.5 text-right font-mono text-[13px] text-neg">
                     −{fmtQty(summary.totalOut)}
-                  </td>
-                  <td
-                    className={cn(
-                      "px-4 py-3.5 text-right font-mono text-[13px]",
-                      summary.totalNet >= 0 ? "text-pos" : "text-neg",
-                    )}
-                  >
-                    {summary.totalNet >= 0 ? "+" : "−"}
-                    {fmtQty(Math.abs(summary.totalNet))}
                   </td>
                   <td className="px-4 py-3.5 text-right font-mono text-[13px] text-ink">
                     {fmtQty(summary.totalClosing)}
@@ -560,7 +583,8 @@ function SortableTh({
 }: {
   label: string;
   sortKey: SortKey;
-  activeKey: SortKey;
+  /** Column currently ordering the table, or null while search ranks by match. */
+  activeKey: string | null;
   dir: "asc" | "desc";
   onSort: (key: SortKey) => void;
   align?: "left" | "right";
@@ -638,12 +662,8 @@ function MovementRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const netClass =
-    row.net > 0 ? "text-pos" : row.net < 0 ? "text-neg" : "text-muted-2";
-  const netText =
-    row.net === 0
-      ? "0"
-      : `${row.net > 0 ? "+" : "−"}${fmtQty(Math.abs(row.net))}`;
+  const expiring = row.expiringQty > 0;
+  const lapsed = expiring && row.daysToExpiry != null && row.daysToExpiry <= 0;
 
   return (
     <>
@@ -694,9 +714,6 @@ function MovementRow({
         >
           {row.qtyOut > 0 ? `−${fmtQty(row.qtyOut)}` : "—"}
         </td>
-        <td className={cn("px-4 py-3 text-right font-mono text-[13px] tabular-nums", netClass)}>
-          {netText}
-        </td>
         <td className="px-4 py-3 text-right font-mono text-[13px] font-semibold tabular-nums text-ink">
           {fmtQty(row.closing)}
         </td>
@@ -713,19 +730,35 @@ function MovementRow({
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          <span
-            className={cn(
-              "inline-flex h-[22px] items-center rounded-md px-2 font-mono text-[10.5px] font-semibold",
-              STATUS_PILL[row.status],
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            <span
+              className={cn(PILL, STATUS_PILL[row.status])}
+              title={
+                row.lowReason === "forecast"
+                  ? "Below the forecast reorder point (daily use × 7-day lead time)"
+                  : row.lowReason === "threshold"
+                    ? "At or below the configured reorder point"
+                    : undefined
+              }
+            >
+              {STATUS_LABEL[row.status]}
+            </span>
+            {expiring && (
+              <span
+                className={cn(PILL, lapsed ? STATUS_PILL.out : STATUS_PILL.low)}
+                title={`${fmtQty(row.expiringQty)} u in ${row.expiringBatches} batch${
+                  row.expiringBatches === 1 ? "" : "es"
+                } · earliest ${formatExpiryDate(row.earliestExpiry)}`}
+              >
+                {expiryPillLabel(row.daysToExpiry)}
+              </span>
             )}
-          >
-            {STATUS_LABEL[row.status]}
-          </span>
+          </div>
         </td>
       </tr>
       {open && (
         <tr className="border-b border-line bg-surface">
-          <td colSpan={9} className="p-0">
+          <td colSpan={8} className="p-0">
             <MovementDrawer row={row} currency={currency} />
           </td>
         </tr>
@@ -781,11 +814,27 @@ function MovementDrawer({
             unit={row.inTransit > 0 ? "u" : undefined}
           />
           <Fact label="Avg cost" value={fmtCost(row.avgCost)} unit={currency} />
-          <Fact
-            label="Reorder point"
-            value={row.reorderPoint != null ? fmtQty(row.reorderPoint) : "—"}
-            unit={row.reorderPoint != null ? "u" : undefined}
-          />
+          {row.reorderPoint != null ? (
+            <Fact
+              label="Reorder point"
+              value={fmtQty(row.reorderPoint)}
+              unit="u"
+              tone={row.lowReason === "threshold" ? "warn" : undefined}
+            />
+          ) : (
+            // No threshold configured — the forecast stands in for it, the
+            // same figure the item's analytics tab calls its reorder point.
+            <Fact
+              label="Reorder point · forecast"
+              value={
+                row.forecastReorderPoint != null
+                  ? fmtQty(row.forecastReorderPoint)
+                  : "—"
+              }
+              unit={row.forecastReorderPoint != null ? "u" : undefined}
+              tone={row.lowReason === "forecast" ? "warn" : undefined}
+            />
+          )}
           <Fact
             label="Daily use"
             value={row.dailyUse != null ? fmtCost(row.dailyUse) : "—"}
@@ -812,6 +861,37 @@ function MovementDrawer({
           <Fact
             label="Last movement"
             value={formatLastMovement(row.lastMovementAt)}
+            small
+          />
+          <Fact
+            label="Expiring soon"
+            value={row.expiringQty > 0 ? fmtQty(row.expiringQty) : "—"}
+            unit={
+              row.expiringQty > 0
+                ? `u · ${row.expiringBatches} batch${row.expiringBatches === 1 ? "" : "es"}`
+                : undefined
+            }
+            tone={row.expiringQty > 0 ? "warn" : undefined}
+          />
+          <Fact
+            label="Earliest expiry"
+            value={formatExpiryDate(row.earliestExpiry)}
+            unit={
+              row.daysToExpiry == null
+                ? undefined
+                : row.daysToExpiry <= 0
+                  ? "lapsed"
+                  : `in ${row.daysToExpiry}d`
+            }
+            tone={
+              row.daysToExpiry == null
+                ? undefined
+                : row.daysToExpiry <= 0
+                  ? "neg"
+                  : row.daysToExpiry <= 7
+                    ? "warn"
+                    : undefined
+            }
             small
           />
         </div>

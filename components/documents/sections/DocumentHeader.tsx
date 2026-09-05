@@ -1,6 +1,6 @@
-import Image from "next/image";
 import { BusinessIdentity, DocumentMeta } from "../types";
 import { getDocumentTitle } from "../utils/format";
+import { DocumentLogo } from "./DocumentLogo";
 
 interface DocumentHeaderProps {
   issuer: BusinessIdentity;
@@ -21,17 +21,8 @@ export function DocumentHeader({ issuer, meta, titleColor }: DocumentHeaderProps
   return (
     <header className="flex items-start justify-between gap-8 border-b border-slate-200 px-10 pb-6 pt-10">
       <div className="flex items-center gap-4">
-        {issuer.logoUrl && (
-          <div className="relative h-16 w-16 shrink-0">
-            <Image
-              src={issuer.logoUrl}
-              alt={`${issuer.name} logo`}
-              fill
-              sizes="64px"
-              className="object-contain"
-            />
-          </div>
-        )}
+        {/* Renders nothing when there is no usable logo — see DocumentLogo. */}
+        <DocumentLogo src={issuer.logoUrl} alt={`${issuer.name} logo`} />
       </div>
 
       <div className="text-right">

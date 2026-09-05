@@ -195,6 +195,9 @@ export interface LocationSettings {
   alertPhoneNumber: string | null;
   sendDailySalesEmail: boolean;
   sendWeeklySalesEmail: boolean;
+  sendMonthlyPlReportEmail: boolean;
+  monthlyPlReportEmail: string | null;
+  monthlyPlReportEmailCc: string | null;
 
   // Settlement
   minimumSettlementAmount: number | null;

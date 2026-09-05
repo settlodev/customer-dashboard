@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
+import { FileDown } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { vfdSalesFigure } from "@/lib/z-report/aggregate";
 import type { ZReportDayRow } from "@/types/reports/z-report";
@@ -125,9 +127,8 @@ export function buildZReportColumns({
     },
   ];
 
-  if (!showVfd) return columns;
-
-  columns.push(
+  if (showVfd) {
+    columns.push(
     {
       id: "vfdReceipts",
       header: "Receipts (VFD)",
@@ -226,7 +227,36 @@ export function buildZReportColumns({
         );
       },
     },
-  );
+    );
+  }
+
+  // Export — the A4 Z-report for that one date, on the location's letterhead
+  // (same document the day page prints). Opens in a new tab and goes straight
+  // to the browser's print / save-as-PDF dialog.
+  columns.push({
+    id: "export",
+    header: "",
+    enableSorting: false,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-muted-foreground hover:text-ink"
+      >
+        <Link
+          href={`/z-report/${row.original.date}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Download the Z-report for ${row.original.date} as PDF`}
+        >
+          <FileDown className="mr-1.5 h-3.5 w-3.5" />
+          PDF
+        </Link>
+      </Button>
+    ),
+  });
 
   return columns;
 }

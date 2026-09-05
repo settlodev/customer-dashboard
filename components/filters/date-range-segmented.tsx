@@ -1,13 +1,23 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import { CalendarRange, Loader2 } from "lucide-react";
-import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  MonthRangePicker,
+  type MonthRange,
+} from "@/components/filters/month-range-picker";
 import {
   Popover,
   PopoverContent,
@@ -15,14 +25,36 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-  detectPreset,
+  DEFAULT_RANGE_PRESETS,
+  detectPresetKey,
+  formatMonthRangeLabel,
   formatRangeLabel,
-  getPresetRange,
-  RANGE_PRESETS,
-  type RangePreset,
+  type RangePresetDef,
 } from "@/lib/date-range";
 
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
+
+/**
+ * Order the default presets give up their seat in when the control runs out
+ * of room — lowest value to the operator first. "Today" and the page's own
+ * default are never in here, so the control always keeps the range you opened
+ * on plus the one everybody reaches for. A page that supplies its own
+ * {@link Props.presets} collapses them from the last one backwards, keeping
+ * the first.
+ */
+const COLLAPSE_ORDER: string[] = ["week", "yesterday", "month"];
+
+function collapseOrderFor(presets: RangePresetDef[]): string[] {
+  if (presets === DEFAULT_RANGE_PRESETS) return COLLAPSE_ORDER;
+  return presets
+    .slice(1)
+    .map((p) => p.key)
+    .reverse();
+}
+
+/** useLayoutEffect that doesn't warn during SSR. */
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const segButton =
   "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-[7px] px-3 text-[12.5px] font-semibold transition-colors";
@@ -50,6 +82,29 @@ interface Props {
    * refetch. Clearing reports `{ from: "", to: "" }`.
    */
   onChange?: (range: { from: string; to: string }) => void;
+  /**
+   * The preset this page falls back to when the URL carries no range. It is
+   * never collapsed away, so the control always shows the window the page
+   * actually opens on. Pages that default to "All" set {@link allowClear}
+   * instead — that segment is never collapsed either.
+   */
+  defaultPreset?: string;
+  /**
+   * The presets to offer instead of the standard Today / Yesterday / This
+   * week / This month row. Keys drive the active highlight and the spinner;
+   * `defaultPreset` must be one of them. Pass a stable reference (a module
+   * constant or a memoised array): the collapse logic keys on its identity,
+   * and a fresh array every render would restart the fit every render.
+   */
+  presets?: RangePresetDef[];
+  /**
+   * `"month"` swaps the Custom popover's day calendar for a month grid and
+   * makes every custom range whole months, first day to last. Presets are
+   * expected to be whole months too. Default `"day"`.
+   */
+  granularity?: "day" | "month";
+  /** Month granularity only: longest custom span the picker allows. */
+  maxMonths?: number;
   className?: string;
 }
 
@@ -57,7 +112,16 @@ interface Props {
  * The dashboard's standard date-range control — a segmented pill of presets
  * (Today / Yesterday / This week / This month) plus a Custom range popover.
  * URL-driven: writes `from`/`to` and resets `page`. Every dashboard date
- * filter renders through this so they all share one look.
+ * filter renders through this so they all share one look. A page can swap
+ * in its own {@link Props.presets} and, with {@link Props.granularity}
+ * `"month"`, turn the whole thing into a month picker with the same look.
+ *
+ * The pill collapses to fit: when its box is too narrow it sheds presets in
+ * {@link COLLAPSE_ORDER}, keeping Today, Custom, the active preset and the
+ * page's {@link Props.defaultPreset}. Shed presets move into the Custom
+ * popover, so nothing becomes unreachable. This is measured per-element
+ * rather than keyed to a breakpoint, so a control squeezed into a narrow
+ * column collapses on a desktop too.
  */
 export function DateRangeSegmented({
   from,
@@ -66,8 +130,13 @@ export function DateRangeSegmented({
   label,
   allLabel = "All",
   onChange,
+  defaultPreset = "month",
+  presets = DEFAULT_RANGE_PRESETS,
+  granularity = "day",
+  maxMonths,
   className,
 }: Props) {
+  const monthly = granularity === "month";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,13 +149,15 @@ export function DateRangeSegmented({
   }, []);
 
   const isAll = !from && !to;
-  const activePreset = useMemo<RangePreset | null>(
-    () => (isAll ? null : detectPreset(from, to)),
-    [isAll, from, to],
+  const activePreset = useMemo<string | null>(
+    () => (isAll ? null : detectPresetKey(presets, from, to)),
+    [isAll, from, to, presets],
   );
 
   const [customOpen, setCustomOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRange | undefined>(
+  // One draft shape serves both pickers: the day calendar's DateRange and the
+  // month grid's MonthRange are both `{ from?: Date; to?: Date }`.
+  const [draft, setDraft] = useState<MonthRange | undefined>(
     from || to
       ? {
           from: from ? new Date(from) : undefined,
@@ -98,11 +169,9 @@ export function DateRangeSegmented({
   // still reflect the OLD url — React only swaps them in once the new RSC
   // payload commits. Track which segment was actually clicked so the spinner
   // lands on it instead of on the previously-active one.
-  const [pendingKey, setPendingKey] = useState<RangePreset | "all" | null>(
-    null,
-  );
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
 
-  const apply = (next: { from: string; to: string }, key: RangePreset) => {
+  const apply = (next: { from: string; to: string }, key: string) => {
     if (onChange) {
       onChange(next);
       return;
@@ -135,8 +204,12 @@ export function DateRangeSegmented({
 
   const onApplyCustom = () => {
     if (!draft?.from) return;
+    const start = draft.from;
+    const end = draft.to ?? draft.from;
     apply(
-      { from: fmt(draft.from), to: fmt(draft.to ?? draft.from) },
+      monthly
+        ? { from: fmt(startOfMonth(start)), to: fmt(endOfMonth(end)) }
+        : { from: fmt(start), to: fmt(end) },
       "custom",
     );
     setCustomOpen(false);
@@ -144,16 +217,85 @@ export function DateRangeSegmented({
 
   const isCustom = activePreset === "custom";
 
+  // ── Responsive collapse ────────────────────────────────────────────
+  // Measured, not breakpointed: the control drops presets whenever its own
+  // box is too narrow for them, so it behaves the same squeezed beside a KPI
+  // row on a laptop as it does on a phone. Anything dropped stays reachable
+  // from the Custom popover.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const [collapsedCount, setCollapsedCount] = useState(0);
+
+  const collapsible = useMemo(
+    () =>
+      collapseOrderFor(presets).filter(
+        (key) => key !== defaultPreset && key !== activePreset,
+      ),
+    [presets, defaultPreset, activePreset],
+  );
+
+  useIsoLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track || typeof ResizeObserver === "undefined") return;
+    let lastWidth = track.clientWidth;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      // Collapsing a segment doesn't change the track's width, so ignore the
+      // echo — reacting to it would expand and re-collapse forever.
+      if (Math.abs(width - lastWidth) < 1) return;
+      lastWidth = width;
+      setCollapsedCount(0);
+    });
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, []);
+
+  // The protected set changes when the active preset does — picking a shed
+  // preset out of the popover has to bring it back into the pill — so start
+  // the fit over rather than carrying a stale count.
+  useIsoLayoutEffect(() => {
+    setCollapsedCount(0);
+  }, [collapsible]);
+
+  // Shrink one segment per pass until the pill fits. No dependency array on
+  // purpose: the Custom segment's label grows when a custom range is picked,
+  // so the fit has to be re-checked after every render. Guarded by the
+  // collapsible length, so it always settles.
+  useIsoLayoutEffect(() => {
+    const pill = pillRef.current;
+    if (!pill) return;
+    if (
+      collapsedCount < collapsible.length &&
+      pill.scrollWidth > pill.clientWidth + 1
+    ) {
+      setCollapsedCount((count) => count + 1);
+    }
+  });
+
+  const hiddenKeys = useMemo(
+    () => new Set(collapsible.slice(0, collapsedCount)),
+    [collapsible, collapsedCount],
+  );
+  const visiblePresets = presets.filter((p) => !hiddenKeys.has(p.key));
+  const hiddenPresets = presets.filter((p) => hiddenKeys.has(p.key));
+  const customLabel = monthly
+    ? formatMonthRangeLabel(from, to)
+    : formatRangeLabel(from, to);
+
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-2", className)}>
       {label && (
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </span>
       )}
+      <div ref={trackRef} className="min-w-0 max-w-full">
       <div
+        ref={pillRef}
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-[10px] border border-line-2 bg-card p-[3px] transition-opacity",
+          // Last-resort overflow scrolls inside the pill rather than pushing
+          // the page sideways, which is what a long preset row used to do.
+          "no-scrollbar inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[10px] border border-line-2 bg-card p-[3px] align-middle transition-opacity",
           isPending && "opacity-60",
         )}
       >
@@ -170,11 +312,11 @@ export function DateRangeSegmented({
             {allLabel}
           </button>
         )}
-        {RANGE_PRESETS.map(({ key, label: presetLabel }) => (
+        {visiblePresets.map(({ key, label: presetLabel, range }) => (
           <button
             key={key}
             type="button"
-            onClick={() => apply(getPresetRange(key), key)}
+            onClick={() => apply(range(), key)}
             disabled={isPending}
             className={cn(segButton, activePreset === key ? segActive : segIdle)}
           >
@@ -212,21 +354,60 @@ export function DateRangeSegmented({
               ) : (
                 <CalendarRange className="h-3.5 w-3.5" />
               )}
-              {isCustom ? formatRangeLabel(from, to) : "Custom"}
+              {isCustom ? customLabel : "Custom"}
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              mode="range"
-              defaultMonth={draft?.from}
-              selected={draft}
-              onSelect={setDraft}
-              numberOfMonths={2}
-              disabled={{ after: today }}
-              toDate={today}
-              initialFocus
-            />
+          <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] p-0" align="end">
+            {hiddenPresets.length > 0 && (
+              // The presets that didn't fit still live here, so narrowing the
+              // screen hides them from the pill without losing them.
+              <div className="border-b border-line p-3">
+                <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-3">
+                  Quick ranges
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {hiddenPresets.map(({ key, label: presetLabel, range }) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        apply(range(), key);
+                        setCustomOpen(false);
+                      }}
+                    >
+                      {presetLabel}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {monthly ? (
+              <MonthRangePicker
+                selected={draft}
+                onSelect={setDraft}
+                toDate={today}
+                maxMonths={maxMonths}
+              />
+            ) : (
+              <Calendar
+                mode="range"
+                defaultMonth={draft?.from}
+                selected={draft?.from ? { from: draft.from, to: draft.to } : undefined}
+                onSelect={setDraft}
+                numberOfMonths={2}
+                disabled={{ after: today }}
+                toDate={today}
+                initialFocus
+              />
+            )}
             <div className="flex items-center justify-end gap-2 border-t border-line p-3">
+              {monthly && maxMonths && (
+                <span className="mr-auto text-[11px] text-muted-foreground">
+                  Up to {maxMonths} months
+                </span>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -246,6 +427,7 @@ export function DateRangeSegmented({
             </div>
           </PopoverContent>
         </Popover>
+      </div>
       </div>
     </div>
   );
