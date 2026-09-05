@@ -6,13 +6,11 @@ import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { UUID } from "node:crypto";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -30,11 +28,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  FieldLabel,
+  ToggleRow,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, Clock } from "lucide-react";
+import { SettingsSection } from "@/components/settings/shared/settings-section";
+import { ConfirmDeleteButton } from "@/components/settings/shared/confirm-delete-button";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "@/components/settings/shared/settings-table";
+import {
+  Loader2,
+  Plus,
+  CalendarCheck,
+  Clock,
+  Timer,
+  Users,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import {
@@ -100,110 +118,98 @@ const ReservationSlotManager = ({ slots, onRefresh }: Props) => {
     {} as Record<string, ReservationSlot[]>,
   );
 
+  // Flatten back out in week order so the table reads Monday → Sunday.
+  const orderedSlots = DAYS_OF_WEEK.flatMap((day) => grouped[day] ?? []);
+
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Reservation Schedule</CardTitle>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Slot Rule
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {slots.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <Clock className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No slot rules configured
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add time windows for each day of the week to define when
-                reservations are accepted
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleAdd}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add First Slot Rule
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {DAYS_OF_WEEK.map((day) => {
-                const daySlots = grouped[day];
-                if (!daySlots || daySlots.length === 0) return null;
-                return (
-                  <div key={day} className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {DAY_OF_WEEK_LABELS[day]}
-                    </p>
-                    {daySlots.map((slot) => (
-                      <div
-                        key={slot.id}
-                        className="flex items-start justify-between gap-4 rounded-lg border p-4"
+      <SettingsSection
+        icon={<Clock className="h-4 w-4" />}
+        title="Reservation schedule"
+        description="Time windows for each day of the week that define when reservations are accepted."
+        footer={
+          <Button size="sm" onClick={handleAdd}>
+            <Plus className="h-3.5 w-3.5" /> Add slot rule
+          </Button>
+        }
+      >
+        <SettingsTableCard
+          isEmpty={orderedSlots.length === 0}
+          emptyLabel="No slot rules configured. Add a time window so guests can pick a booking time."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Day</th>
+                <th className={thClass}>Window</th>
+                <th className={`${thClass} text-right`}>Slot every</th>
+                <th className={`${thClass} text-right`}>Max bookings</th>
+                <th className={`${thClass} text-right`}>Max guests</th>
+                <th className={thClass}>Status</th>
+                <th className={`${thClass} text-right`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orderedSlots.map((slot) => (
+                <tr key={slot.id} className={trClass}>
+                  <td className={`${tdClass} font-medium`}>
+                    {DAY_OF_WEEK_LABELS[slot.dayOfWeek]}
+                  </td>
+                  <td className={`${tdClass} font-mono text-[12px] tabular-nums`}>
+                    {slot.startTime?.substring(0, 5)} –{" "}
+                    {slot.endTime?.substring(0, 5)}
+                  </td>
+                  <td
+                    className={`${tdClass} text-right font-mono text-[12px] tabular-nums text-ink-2`}
+                  >
+                    {slot.slotDurationMinutes} min
+                  </td>
+                  <td
+                    className={`${tdClass} text-right font-mono text-[12px] tabular-nums text-ink-2`}
+                  >
+                    {slot.maxReservations ?? "—"}
+                  </td>
+                  <td
+                    className={`${tdClass} text-right font-mono text-[12px] tabular-nums text-ink-2`}
+                  >
+                    {slot.maxGuests ?? "—"}
+                  </td>
+                  <td className={tdClass}>
+                    <span
+                      className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${
+                        slot.active ? "text-pos" : "text-muted-foreground"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          slot.active ? "bg-pos" : "bg-muted-2"
+                        }`}
+                      />
+                      {slot.active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className={tdActionsClass}>
+                    <div className="inline-flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEdit(slot)}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium">
-                              {slot.startTime?.substring(0, 5)} –{" "}
-                              {slot.endTime?.substring(0, 5)}
-                            </span>
-                            <Badge
-                              variant={slot.active ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {slot.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-xs text-muted-foreground">
-                              Every {slot.slotDurationMinutes}min
-                            </span>
-                            {slot.maxReservations && (
-                              <span className="text-xs text-muted-foreground">
-                                &middot; Max {slot.maxReservations} bookings
-                              </span>
-                            )}
-                            {slot.maxGuests && (
-                              <span className="text-xs text-muted-foreground">
-                                &middot; Max {slot.maxGuests} guests
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(slot)}
-                            className="h-8 w-8"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(slot.id)}
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        Edit
+                      </Button>
+                      <ConfirmDeleteButton
+                        onConfirm={() => handleDelete(slot.id)}
+                        title="Delete this slot rule?"
+                        description={`${DAY_OF_WEEK_LABELS[slot.dayOfWeek]} ${slot.startTime?.substring(0, 5)}–${slot.endTime?.substring(0, 5)} stops being offered on the booking page. Reservations already taken in this window are kept.`}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SettingsTableCard>
+      </SettingsSection>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
@@ -284,20 +290,20 @@ function SlotForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           <FormField
             control={form.control}
             name="dayOfWeek"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Day of Week</FormLabel>
+              <FormItem className="min-w-0 space-y-[7px]">
+                <FieldLabel required>Day of Week</FieldLabel>
                 <Select
                   onValueChange={field.onChange}
                   value={field.value ?? ""}
                   disabled={isPending}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className={controlSelectTriggerClass}>
                       <SelectValue placeholder="Select day" />
                     </SelectTrigger>
                   </FormControl>
@@ -314,15 +320,21 @@ function SlotForm({
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="startTime"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Time</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel required>Start Time</FieldLabel>
                   <FormControl>
-                    <Input type="time" {...field} disabled={isPending} />
+                    <ControlInput
+                      type="time"
+                      mono
+                      prefix={<Clock className="h-3.5 w-3.5" />}
+                      {...field}
+                      disabled={isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -333,10 +345,16 @@ function SlotForm({
               control={form.control}
               name="endTime"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>End Time</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel required>End Time</FieldLabel>
                   <FormControl>
-                    <Input type="time" {...field} disabled={isPending} />
+                    <ControlInput
+                      type="time"
+                      mono
+                      prefix={<Clock className="h-3.5 w-3.5" />}
+                      {...field}
+                      disabled={isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -348,13 +366,16 @@ function SlotForm({
             control={form.control}
             name="slotDurationMinutes"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Slot Duration (minutes)</FormLabel>
+              <FormItem className="min-w-0 space-y-[7px]">
+                <FieldLabel required>Slot Duration</FieldLabel>
                 <FormControl>
-                  <Input
+                  <ControlInput
                     type="number"
+                    mono
                     min={5}
                     step={5}
+                    prefix={<Timer className="h-3.5 w-3.5" />}
+                    suffix="min"
                     {...field}
                     value={field.value ?? ""}
                     disabled={isPending}
@@ -372,18 +393,20 @@ function SlotForm({
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="maxReservations"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Max Bookings/Slot</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel optional>Max Bookings/Slot</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       type="number"
+                      mono
                       min={1}
                       placeholder="No limit"
+                      prefix={<CalendarCheck className="h-3.5 w-3.5" />}
                       {...field}
                       value={field.value ?? ""}
                       disabled={isPending}
@@ -405,13 +428,16 @@ function SlotForm({
               control={form.control}
               name="maxGuests"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Max Guests/Slot</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel optional>Max Guests/Slot</FieldLabel>
                   <FormControl>
-                    <Input
+                    <ControlInput
                       type="number"
+                      mono
                       min={1}
                       placeholder="No limit"
+                      prefix={<Users className="h-3.5 w-3.5" />}
+                      suffix="guests"
                       {...field}
                       value={field.value ?? ""}
                       disabled={isPending}
@@ -430,22 +456,21 @@ function SlotForm({
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="active"
-            render={({ field }) => (
-              <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                <FormLabel className="cursor-pointer">Active</FormLabel>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={isPending}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-1 gap-3">
+            <FormField
+              control={form.control}
+              name="active"
+              render={({ field }) => (
+                <ToggleRow
+                  label="Active"
+                  hint="Turn off to pause this window without deleting the rule."
+                  checked={!!field.value}
+                  onChange={field.onChange}
+                  disabled={isPending}
+                />
+              )}
+            />
+          </div>
         </div>
 
         <DialogFooter className="mt-6">
@@ -458,8 +483,8 @@ function SlotForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {item ? "Update" : "Create"}
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Saving…" : item ? "Save changes" : "Create slot rule"}
           </Button>
         </DialogFooter>
       </form>

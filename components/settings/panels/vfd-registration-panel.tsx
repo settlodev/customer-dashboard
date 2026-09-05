@@ -2,19 +2,29 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  Building2,
+  Hash,
+  Loader2,
+  Mail,
+  Phone,
+  RefreshCw,
+  ShieldCheck,
+  Stamp,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import {
-  SettingsSection,
-  SettingsField,
-  SettingsSwitchRow,
-} from "../shared/settings-section";
+  ControlInput,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
+import { useToast } from "@/hooks/use-toast";
+import { SettingsSection } from "../shared/settings-section";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import {
   getLocationVfdRegistration,
   onboardLocationVfd,
@@ -34,6 +44,12 @@ const isValidTin = (tin: string) => /^\d{9}$/.test(tin) && !/^(\d)\1{8}$/.test(t
 
 type EfdDraft = { enableVirtualEfd?: boolean; efdSerialNumber?: string };
 
+const EFD_STATUS_PILL: Record<EfdStatus, { label: string; variant: "warn" | "soft" | "pos" }> = {
+  REQUESTED: { label: "Requested", variant: "warn" },
+  AWAITING_CONFIRMATION: { label: "Awaiting confirmation", variant: "soft" },
+  ACTIVE: { label: "Active", variant: "pos" },
+};
+
 const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
   if (!status) {
     return (
@@ -42,26 +58,8 @@ const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
       </Badge>
     );
   }
-  const map: Record<EfdStatus, { label: string; className: string }> = {
-    REQUESTED: {
-      label: "Requested",
-      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    AWAITING_CONFIRMATION: {
-      label: "Awaiting confirmation",
-      className: "bg-blue-100 text-blue-800 border-blue-200",
-    },
-    ACTIVE: {
-      label: "Active",
-      className: "bg-green-100 text-green-800 border-green-200",
-    },
-  };
-  const { label, className } = map[status];
-  return (
-    <Badge variant="outline" className={className}>
-      {label}
-    </Badge>
-  );
+  const { label, variant } = EFD_STATUS_PILL[status];
+  return <Badge variant={variant}>{label}</Badge>;
 };
 
 export function VfdRegistrationPanel({
@@ -99,7 +97,6 @@ export function VfdRegistrationPanel({
     efdDraft.enableVirtualEfd ?? Boolean(businessSettings?.enableVirtualEfd);
   const efdSerial =
     efdDraft.efdSerialNumber ?? businessSettings?.efdSerialNumber ?? "";
-  const efdDirty = Object.keys(efdDraft).length > 0;
 
   const saveBusinessSettings = useCallback(
     async (patch: EfdDraft) => {
@@ -248,65 +245,98 @@ export function VfdRegistrationPanel({
 
       {loading ? (
         <Card className="rounded-xl shadow-sm">
-          <CardContent className="py-10 flex justify-center">
+          <CardContent className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
       ) : !registration ? (
         <SettingsSection
+          icon={<Stamp className="h-4 w-4" />}
           title="Register with TRA"
           description="Register this location with TRA through the DIRM virtual fiscal device service."
           footer={
             <Button onClick={submit} disabled={isSubmitting || !canSubmit}>
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Register
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {isSubmitting ? "Registering…" : "Register"}
             </Button>
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <SettingsField label="TIN number">
-              <Input
-                value={form.tin}
-                onChange={(e) => setField("tin", e.target.value.replace(/\D/g, ""))}
-                placeholder="e.g. 123456789"
-                inputMode="numeric"
-                disabled={isSubmitting}
-                aria-invalid={tinHasError}
-              />
-              {tinHasError && (
-                <p className="text-xs text-red-600">
-                  TIN must be exactly 9 digits and not all the same digit.
-                </p>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+            <Field
+              label="TIN number"
+              hint={
+                tinHasError
+                  ? "TIN must be exactly 9 digits and not all the same digit."
+                  : "Nine digits, as issued by TRA."
+              }
+            >
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  mono
+                  inputMode="numeric"
+                  maxLength={9}
+                  prefix={<Hash className="h-3.5 w-3.5" />}
+                  value={form.tin}
+                  onChange={(e) => setField("tin", e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456789"
+                  disabled={isSubmitting}
+                  aria-invalid={tinHasError}
+                />
               )}
-            </SettingsField>
-            <SettingsField label="Business name">
-              <Input
-                value={form.businessName}
-                onChange={(e) => setField("businessName", e.target.value)}
-                disabled={isSubmitting}
-              />
-            </SettingsField>
-            <SettingsField label="Email address">
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setField("email", e.target.value)}
-                disabled={isSubmitting}
-              />
-            </SettingsField>
-            <SettingsField label="Phone number">
-              <Input
-                value={form.phone}
-                onChange={(e) => setField("phone", e.target.value)}
-                placeholder="+255712345678"
-                disabled={isSubmitting}
-              />
-            </SettingsField>
+            </Field>
+            <Field label="Business name" hint="Exactly as registered with TRA.">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  prefix={<Building2 className="h-3.5 w-3.5" />}
+                  value={form.businessName}
+                  onChange={(e) => setField("businessName", e.target.value)}
+                  disabled={isSubmitting}
+                />
+              )}
+            </Field>
+            <Field label="Email address">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  type="email"
+                  inputMode="email"
+                  prefix={<Mail className="h-3.5 w-3.5" />}
+                  value={form.email}
+                  onChange={(e) => setField("email", e.target.value)}
+                  disabled={isSubmitting}
+                />
+              )}
+            </Field>
+            <Field label="Phone number">
+              {(id) => (
+                <ControlInput
+                  id={id}
+                  type="tel"
+                  inputMode="tel"
+                  prefix={<Phone className="h-3.5 w-3.5" />}
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="+255 712 345 678"
+                  disabled={isSubmitting}
+                />
+              )}
+            </Field>
           </div>
         </SettingsSection>
       ) : (
         <SettingsSection
+          icon={<ShieldCheck className="h-4 w-4" />}
           title="TRA fiscal device status"
+          description="Receipts fiscalise only once this location's VFD account is verified."
+          aside={
+            registration.verified ? (
+              <Badge variant="pos">Verified</Badge>
+            ) : (
+              <Badge variant="warn">Awaiting activation</Badge>
+            )
+          }
           footer={
             <div className="space-y-1.5">
               <Button
@@ -316,8 +346,12 @@ export function VfdRegistrationPanel({
                 onClick={checkStatus}
                 disabled={isChecking}
               >
-                {isChecking && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                Check status
+                {isChecking ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                {isChecking ? "Checking…" : "Check status"}
               </Button>
               <p className="text-[11px] text-muted-foreground">
                 Verification completes after DIRM/TRA activates the account — use
@@ -326,26 +360,10 @@ export function VfdRegistrationPanel({
             </div>
           }
         >
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium">Status:</span>
-            {registration.verified ? (
-              <Badge variant="pos">Verified</Badge>
-            ) : (
-              <Badge variant="warn">Awaiting activation</Badge>
-            )}
-          </div>
-
-          {!registration.verified && (
-            <p className="text-xs text-muted-foreground">
-              Receipts can be fiscalised only once this location&apos;s VFD account is
-              verified.
-            </p>
-          )}
-
-          <div className="rounded-md border divide-y">
-            <Row label="TIN" value={registration.tin != null ? String(registration.tin) : "—"} />
-            <Row label="VRN" value={registration.vrn || "Not registered"} />
-            <Row label="UIN" value={registration.uin || "—"} />
+          <div className="overflow-hidden rounded-lg border border-line">
+            <Row label="TIN" value={registration.tin != null ? String(registration.tin) : "—"} mono />
+            <Row label="VRN" value={registration.vrn || "Not registered"} mono />
+            <Row label="UIN" value={registration.uin || "—"} mono />
             <Row label="Tax office" value={registration.taxOffice || "—"} />
             <Row label="Trading name" value={registration.tradingName || "—"} />
             <Row label="Business name" value={registration.businessName || "—"} />
@@ -365,7 +383,7 @@ export function VfdRegistrationPanel({
           </div>
 
           {registration.externalStatusMessage && (
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-[12px] italic text-muted-foreground">
               {registration.externalStatusMessage}
             </p>
           )}
@@ -378,31 +396,22 @@ export function VfdRegistrationPanel({
           already fiscalising. */}
       {!loading && (
         <SettingsSection
+          icon={<Stamp className="h-4 w-4" />}
           title="Virtual EFD"
           description="Business-wide fiscal-device flags shared by every location."
-          onSave={() =>
-            startSaveEfd(async () => {
-              const ok = await saveBusinessSettings(efdDraft);
-              if (ok) {
-                setEfdDraft({});
-                toast({ variant: "success", title: "EFD settings updated." });
-              }
-            })
-          }
-          isPending={isSavingEfd}
-          isDirty={efdDirty}
+          aside={<EfdStatusPill status={businessSettings?.efdStatus ?? null} />}
         >
           {!businessSettings ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[12px] text-muted-foreground">
               Business settings unavailable.
             </p>
           ) : (
             <>
-              <SettingsSwitchRow
+              <ToggleRow
                 label="Enable Virtual EFD"
-                description={
+                hint={
                   registration
-                    ? "On — this location is registered with TRA."
+                    ? "On — this location is registered with TRA, so the flag follows the registration."
                     : "Request virtual EFD registration for this business."
                 }
                 checked={enableVirtualEfd}
@@ -415,42 +424,72 @@ export function VfdRegistrationPanel({
                 }
               />
 
-              <div className="max-w-sm pt-2">
-                <SettingsField
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <Field
                   label="EFD serial number"
-                  hint="Physical EFD serial, where one is in use alongside the virtual device."
+                  hint="Physical EFD serial, where one runs alongside the virtual device."
+                  optional
                 >
-                  <Input
-                    value={efdSerial}
-                    onChange={(e) =>
-                      setEfdDraft((prev) => ({
-                        ...prev,
-                        efdSerialNumber: e.target.value,
-                      }))
-                    }
-                    placeholder="EFD serial"
-                    disabled={isSavingEfd}
-                  />
-                </SettingsField>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium">EFD status:</span>
-                <EfdStatusPill status={businessSettings.efdStatus} />
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      mono
+                      prefix={<Hash className="h-3.5 w-3.5" />}
+                      value={efdSerial}
+                      onChange={(e) =>
+                        setEfdDraft((prev) => ({
+                          ...prev,
+                          efdSerialNumber: e.target.value,
+                        }))
+                      }
+                      placeholder="EFD serial"
+                      disabled={isSavingEfd}
+                    />
+                  )}
+                </Field>
               </div>
             </>
           )}
         </SettingsSection>
       )}
+
+      {!loading && businessSettings && (
+        <SettingsSaveBar
+          dirtyCount={Object.keys(efdDraft).length}
+          isPending={isSavingEfd}
+          onSave={() =>
+            startSaveEfd(async () => {
+              const ok = await saveBusinessSettings(efdDraft);
+              if (ok) {
+                setEfdDraft({});
+                toast({ variant: "success", title: "EFD settings updated." });
+              }
+            })
+          }
+          onDiscard={() => setEfdDraft({})}
+        />
+      )}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+function Row({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: ReactNode;
+  mono?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 px-3 py-2">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-right">{value}</span>
+    <div className="flex items-center justify-between gap-4 border-b border-line px-3.5 py-2.5 last:border-b-0">
+      <span className="text-[12px] font-medium text-muted-foreground">{label}</span>
+      <span
+        className={`text-right text-[13px] font-medium text-ink${mono ? " font-mono" : ""}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }

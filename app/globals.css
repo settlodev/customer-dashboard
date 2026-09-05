@@ -11,6 +11,17 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Scrollable without the bar — for pill rows and tab strips that may
+     overflow on narrow screens but shouldn't show chrome for it. Was already
+     being applied in a couple of places before it existed as a rule. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {

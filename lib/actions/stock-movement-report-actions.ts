@@ -1,9 +1,11 @@
 "use server";
 
 import ApiClient from "@/lib/settlo-api-client";
+import { rethrowIfBoundary } from "@/lib/list-fallback";
 import { parseStringify } from "@/lib/utils";
 import { inventoryUrl } from "./inventory-client";
 import type {
+  LowReason,
   StockMovementReportResponse,
   StockMovementReportRow,
   StockMovementReportSummary,
@@ -13,7 +15,6 @@ import type {
 interface StockMovementQuery {
   from: string;
   to: string;
-  asOf: string;
   /** 0-based page. */
   page: number;
   size: number;
@@ -29,7 +30,6 @@ const EMPTY_SUMMARY: StockMovementReportSummary = {
   totalOpening: 0,
   totalIn: 0,
   totalOut: 0,
-  totalNet: 0,
   totalClosing: 0,
   totalValue: 0,
   totalInTransit: 0,
@@ -39,6 +39,7 @@ const EMPTY_SUMMARY: StockMovementReportSummary = {
   out: 0,
   dead: 0,
   reserved: 0,
+  expiring: 0,
 };
 
 const EMPTY_STOCK_MOVEMENT_REPORT: StockMovementReportResponse = {
@@ -64,16 +65,20 @@ const rec = (v: unknown): Record<string, unknown> =>
 /**
  * Fetch one page of the stock movement report from the Inventory Service.
  * The active location rides on the X-Location-Id header (set by ApiClient),
- * so no locationId is passed. Fails soft to an empty report.
+ * so no locationId is passed.
+ *
+ * Auth/permission failures propagate to the route error boundary; any other
+ * failure resolves to `null` so the page can show a "couldn't load" panel.
+ * It must never resolve to an empty report on error — that used to render as
+ * "No movement for this period", which reads as a data fact, not an outage.
  */
 export async function getStockMovementReport(
   q: StockMovementQuery,
-): Promise<StockMovementReportResponse> {
+): Promise<StockMovementReportResponse | null> {
   try {
     const params = new URLSearchParams({
       from: q.from,
       to: q.to,
-      asOf: q.asOf,
       page: String(q.page),
       size: String(q.size),
       lens: q.lens ?? "all",
@@ -94,7 +99,6 @@ export async function getStockMovementReport(
       totalOpening: n(s.totalOpening),
       totalIn: n(s.totalIn),
       totalOut: n(s.totalOut),
-      totalNet: n(s.totalNet),
       totalClosing: n(s.totalClosing),
       totalValue: n(s.totalValue),
       totalInTransit: n(s.totalInTransit),
@@ -104,6 +108,7 @@ export async function getStockMovementReport(
       out: n(s.out),
       dead: n(s.dead),
       reserved: n(s.reserved),
+      expiring: n(s.expiring),
     };
 
     const content: StockMovementReportRow[] = Array.isArray(raw.content)
@@ -119,8 +124,10 @@ export async function getStockMovementReport(
       totalPages: Math.round(n(raw.totalPages)),
       last: Boolean(raw.last),
     };
-  } catch {
-    return EMPTY_STOCK_MOVEMENT_REPORT;
+  } catch (error) {
+    rethrowIfBoundary(error);
+    console.error("getStockMovementReport failed", error);
+    return null;
   }
 }
 
@@ -135,7 +142,6 @@ function mapRow(r: Record<string, unknown>): StockMovementReportRow {
     opening: n(r.opening),
     qtyIn: n(r.qtyIn),
     qtyOut: n(r.qtyOut),
-    net: n(r.net),
     closing: n(r.closing),
     value: n(r.value),
     reserved: n(r.reserved),
@@ -144,6 +150,15 @@ function mapRow(r: Record<string, unknown>): StockMovementReportRow {
     avgCost: n(r.avgCost),
     reorderPoint: nOrNull(r.reorderPoint),
     status,
+    lowReason:
+      r.lowReason === "threshold" || r.lowReason === "forecast"
+        ? (r.lowReason as LowReason)
+        : null,
+    forecastReorderPoint: nOrNull(r.forecastReorderPoint),
+    expiringQty: n(r.expiringQty),
+    expiringBatches: Math.round(n(r.expiringBatches)),
+    earliestExpiry: r.earliestExpiry == null ? null : String(r.earliestExpiry),
+    daysToExpiry: iOrNull(r.daysToExpiry),
     dailyUse: nOrNull(r.dailyUse),
     daysOfCover: iOrNull(r.daysOfCover),
     daysIdle: iOrNull(r.daysIdle),

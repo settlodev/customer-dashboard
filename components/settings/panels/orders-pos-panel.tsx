@@ -1,18 +1,29 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SettingsSection, SettingsSwitchRow } from "../shared/settings-section";
+  Fingerprint,
+  Hash,
+  KeyRound,
+  LayoutGrid,
+  Monitor,
+  ShoppingBag,
+  Tag,
+  Timer,
+  UtensilsCrossed,
+} from "lucide-react";
+
+import {
+  ControlInput,
+  RadioCards,
+  StandaloneField as Field,
+  ToggleRow,
+  standaloneLabelClass,
+} from "@/components/ui/field";
+import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
-import { ORDERING_MODE_OPTIONS, LOGIN_MODE_OPTIONS } from "@/types/location-settings/type";
 
 const KEYS = [
   "orderingMode",
@@ -37,6 +48,44 @@ const KEYS = [
   "showOrderNumberPrefix",
 ] as const;
 
+const ICON = "h-3.5 w-3.5";
+
+const ORDERING_MODE_CARDS = [
+  {
+    value: "STANDARD" as const,
+    label: "Standard orders",
+    description: "Counter-style: each order stands on its own, no table map.",
+    icon: <LayoutGrid className={ICON} />,
+  },
+  {
+    value: "TABLE_MANAGEMENT" as const,
+    label: "Orders around tables",
+    description: "Orders open against a table and can be moved, merged or split.",
+    icon: <UtensilsCrossed className={ICON} />,
+  },
+];
+
+const LOGIN_MODE_CARDS = [
+  {
+    value: "PIN_AND_FINGERPRINT" as const,
+    label: "PIN or fingerprint",
+    description: "Staff sign in with whichever is quicker.",
+    icon: <KeyRound className={ICON} />,
+  },
+  {
+    value: "FINGERPRINT_ONLY" as const,
+    label: "Fingerprint only",
+    description: "Needs a paired reader on every device.",
+    icon: <Fingerprint className={ICON} />,
+  },
+  {
+    value: "PIN_ONLY" as const,
+    label: "PIN only",
+    description: "Numeric passcode, no hardware needed.",
+    icon: <Hash className={ICON} />,
+  },
+];
+
 export function OrdersPosPanel({
   settings,
   onSaved,
@@ -46,6 +95,7 @@ export function OrdersPosPanel({
 }) {
   const panel = useSettingsPanel(KEYS, settings, onSaved);
   const v = panel.values;
+  const d = panel.isPending;
 
   return (
     <div className="space-y-6">
@@ -55,238 +105,247 @@ export function OrdersPosPanel({
       />
 
       <SettingsSection
+        icon={<ShoppingBag className="h-4 w-4" />}
         title="Order behaviour"
         description="How orders are created and handled on the POS."
-        onSave={panel.save}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Labelled label="Ordering mode">
-            <Select
-              value={v.orderingMode ?? "STANDARD"}
-              onValueChange={(val) =>
-                panel.setField("orderingMode", val as LocationSettings["orderingMode"])
-              }
-              disabled={panel.isPending}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDERING_MODE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Labelled>
-          <Labelled label="Login mode">
-            <Select
-              value={v.loginMode ?? "PIN_AND_FINGERPRINT"}
-              onValueChange={(val) =>
-                panel.setField("loginMode", val as LocationSettings["loginMode"])
-              }
-              disabled={panel.isPending}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LOGIN_MODE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Labelled>
-          <Labelled label="Auto-close idle orders after (mins)">
-            <Input
-              type="number"
-              min={1}
-              value={v.autoCloseOrderMinutes ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "autoCloseOrderMinutes",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </Labelled>
+        <div className="space-y-[7px]">
+          <span className={standaloneLabelClass}>Ordering mode</span>
+          <RadioCards
+            value={v.orderingMode ?? "STANDARD"}
+            onChange={(val) => panel.setField("orderingMode", val)}
+            options={ORDERING_MODE_CARDS}
+            disabled={d}
+            className="lg:grid-cols-2"
+          />
         </div>
 
-        <div className="space-y-1">
-          <SettingsSwitchRow
+        <div className="space-y-[7px]">
+          <span className={standaloneLabelClass}>Staff login</span>
+          <RadioCards
+            value={v.loginMode ?? "PIN_AND_FINGERPRINT"}
+            onChange={(val) => panel.setField("loginMode", val)}
+            options={LOGIN_MODE_CARDS}
+            disabled={d}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field
+            label="Auto-close idle orders after"
+            hint="Open orders with no activity are closed automatically. Leave blank to never auto-close."
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                suffix="min"
+                prefix={<Timer className={ICON} />}
+                value={v.autoCloseOrderMinutes ?? ""}
+                onChange={(e) =>
+                  panel.setField("autoCloseOrderMinutes", parseOptionalNumber(e.target.value))
+                }
+                placeholder="—"
+                disabled={d}
+              />
+            )}
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
             label="Kitchen display system"
-            description="Route tickets to connected KDS screens."
+            hint="Route tickets to connected KDS screens."
             checked={!!v.enableKitchenDisplay}
             onChange={(x) => panel.setField("enableKitchenDisplay", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Allow tipping"
+            hint="Offer a tip step when settling an order."
             checked={!!v.allowTipping}
             onChange={(x) => panel.setField("allowTipping", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Allow order requests"
-            description="Accept orders from digital menus or external sources."
+            hint="Accept orders from digital menus or external sources."
             checked={!!v.allowOrderRequests}
             onChange={(x) => panel.setField("allowOrderRequests", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Allow custom pricing"
-            description="Staff can override the selling price on a line."
+            hint="Staff can override the selling price on a line."
             checked={!!v.allowCustomPrice}
             onChange={(x) => panel.setField("allowCustomPrice", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Enable shifts"
+            hint="Staff clock in and out; sales attribute to a shift."
             checked={!!v.useShifts}
             onChange={(x) => panel.setField("useShifts", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Require passcodes for staff actions"
+            hint="Ask for a passcode before sensitive POS actions."
             checked={!!v.usePasscodes}
             onChange={(x) => panel.setField("usePasscodes", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Ecommerce storefront"
+            hint="Expose this location's catalogue to the web storefront."
             checked={!!v.ecommerceEnabled}
             onChange={(x) => panel.setField("ecommerceEnabled", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Auto-open cash drawer"
+            hint="Pop the drawer when a cash payment is taken."
             checked={!!v.autoOpenCashDrawer}
             onChange={(x) => panel.setField("autoOpenCashDrawer", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Auto-close when fully paid"
+            hint="Close the order the moment the balance hits zero."
             checked={!!v.autoCloseOrderWhenFullyPaid}
             onChange={(x) => panel.setField("autoCloseOrderWhenFullyPaid", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
         </div>
       </SettingsSection>
 
       <SettingsSection
+        icon={<Monitor className="h-4 w-4" />}
         title="POS display"
         description="What cashiers see while taking orders."
-        onSave={panel.save}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
-        <div className="space-y-1">
-          <SettingsSwitchRow
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
             label="Show price on POS"
+            hint="Print the selling price on each product tile."
             checked={!!v.showPosProductPrice}
             onChange={(x) => panel.setField("showPosProductPrice", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Show stock quantity on POS"
+            hint="Show the on-hand quantity on each product tile."
             checked={!!v.showPosProductQuantity}
             onChange={(x) => panel.setField("showPosProductQuantity", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
         </div>
       </SettingsSection>
 
       <SettingsSection
+        icon={<Hash className="h-4 w-4" />}
         title="Order numbering"
         description="How generated order names and numbers look on tickets and receipts."
-        onSave={panel.save}
-        isPending={panel.isPending}
-        isDirty={panel.isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <Labelled label="Order name prefix">
-            <Input
-              maxLength={50}
-              value={v.orderNamePrefix ?? ""}
-              onChange={(e) => panel.setField("orderNamePrefix", e.target.value)}
-              disabled={panel.isPending}
-            />
-          </Labelled>
-          <Labelled label="Order number start">
-            <Input
-              type="number"
-              min={1}
-              value={v.orderNumberStart ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "orderNumberStart",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </Labelled>
-          <Labelled label="Order number padding">
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={v.orderNumberPadding ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "orderNumberPadding",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </Labelled>
-          <Labelled label="Receipt copies">
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={v.receiptCopies ?? ""}
-              onChange={(e) =>
-                panel.setField(
-                  "receiptCopies",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={panel.isPending}
-            />
-          </Labelled>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Order name prefix" hint="Short code before the number, e.g. ORD.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                maxLength={50}
+                mono
+                prefix={<Tag className={ICON} />}
+                value={v.orderNamePrefix ?? ""}
+                onChange={(e) => panel.setField("orderNamePrefix", e.target.value)}
+                placeholder="ORD"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Order number start" hint="First number issued for this location.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                prefix={<Hash className={ICON} />}
+                value={v.orderNumberStart ?? ""}
+                onChange={(e) =>
+                  panel.setField("orderNumberStart", parseOptionalNumber(e.target.value))
+                }
+                placeholder="1"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Number padding" hint="Zero-pad to this many digits.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                max={10}
+                suffix="digits"
+                value={v.orderNumberPadding ?? ""}
+                onChange={(e) =>
+                  panel.setField("orderNumberPadding", parseOptionalNumber(e.target.value))
+                }
+                placeholder="4"
+                disabled={d}
+              />
+            )}
+          </Field>
+          <Field label="Receipt copies" hint="Printed per settled order.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                max={10}
+                suffix="copies"
+                value={v.receiptCopies ?? ""}
+                onChange={(e) =>
+                  panel.setField("receiptCopies", parseOptionalNumber(e.target.value))
+                }
+                placeholder="1"
+                disabled={d}
+              />
+            )}
+          </Field>
         </div>
-        <div className="space-y-1">
-          <SettingsSwitchRow
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ToggleRow
             label="Include date in order name"
+            hint="Adds the order date to the generated name."
             checked={!!v.includeDateInOrderName}
             onChange={(x) => panel.setField("includeDateInOrderName", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
-          <SettingsSwitchRow
+          <ToggleRow
             label="Show order name prefix on receipts"
+            hint="Print the prefix with the number on customer receipts."
             checked={!!v.showOrderNumberPrefix}
             onChange={(x) => panel.setField("showOrderNumberPrefix", x)}
-            disabled={panel.isPending}
+            disabled={d}
           />
         </div>
       </SettingsSection>
-    </div>
-  );
-}
 
-function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+      <SettingsSaveBar
+        dirtyCount={panel.dirtyCount}
+        isPending={panel.isPending}
+        onSave={panel.save}
+        onDiscard={() => panel.reset()}
+      />
     </div>
   );
 }

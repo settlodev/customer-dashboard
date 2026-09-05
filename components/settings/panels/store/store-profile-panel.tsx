@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Hash, Home, Map, MapPin, Compass, Store as StoreIcon, Warehouse } from "lucide-react";
 import {
-  SettingsSection,
-  SettingsField,
-} from "../../shared/settings-section";
+  ControlInput,
+  StandaloneField as Field,
+} from "@/components/ui/field";
+import { SettingsSection } from "../../shared/settings-section";
 import { PanelHeader } from "../../shared/panel-header";
+import { SettingsSaveBar } from "../../shared/settings-save-bar";
 import { useToast } from "@/hooks/use-toast";
 import { updateStore } from "@/lib/actions/store-actions";
 import type { Store } from "@/types/store/type";
@@ -49,7 +51,9 @@ export function StoreProfilePanel({
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const isDirty = FIELDS.some((k) => (values[k] ?? "") !== (baseline[k] ?? ""));
+  const dirtyCount = FIELDS.filter(
+    (k) => (values[k] ?? "") !== (baseline[k] ?? ""),
+  ).length;
   const set = (k: FieldKey, next: string) =>
     setValues((prev) => ({ ...prev, [k]: next }));
 
@@ -113,91 +117,147 @@ export function StoreProfilePanel({
       />
 
       <SettingsSection
+        icon={<StoreIcon className="h-4 w-4" />}
         title="Details"
         description="Shown wherever this store is named across the dashboard."
-        onSave={save}
-        isPending={isPending}
-        isDirty={isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <SettingsField label="Store name">
-            <Input
-              value={values.name ?? ""}
-              onChange={(e) => set("name", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Code">
-            <Input
-              value={values.code ?? ""}
-              onChange={(e) => set("code", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Store number">
-            <Input
-              value={values.storeNumber ?? ""}
-              onChange={(e) => set("storeNumber", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Capacity" hint="Optional — units this store holds.">
-            <Input
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Store name"
+            hint="Shown wherever this store is named.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<StoreIcon className="h-3.5 w-3.5" />}
+              placeholder="e.g. Masaki stockroom"
+                value={values.name ?? ""}
+                onChange={(e) => set("name", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Code"
+            hint="Short code used on transfer documents.">
+            {(id) => (
+              <ControlInput
+                id={id}
+              mono
+                prefix={<Hash className="h-3.5 w-3.5" />}
+              placeholder="MSK"
+                value={values.code ?? ""}
+                onChange={(e) => set("code", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Store number"
+            hint="Your own numbering, if you use one.">
+            {(id) => (
+              <ControlInput
+                id={id}
+              mono
+                prefix={<Hash className="h-3.5 w-3.5" />}
+                value={values.storeNumber ?? ""}
+                onChange={(e) => set("storeNumber", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Capacity"
+            hint="Units this store can hold.">
+            {(id) => (
+              <ControlInput
+                id={id}
               type="number"
+              inputMode="numeric"
               min={0}
-              value={values.capacity ?? ""}
-              onChange={(e) => set("capacity", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
+              mono
+                prefix={<Warehouse className="h-3.5 w-3.5" />}
+              placeholder="—"
+                value={values.capacity ?? ""}
+                onChange={(e) => set("capacity", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
         </div>
       </SettingsSection>
 
       <SettingsSection
+        icon={<MapPin className="h-4 w-4" />}
         title="Address"
         description="Where deliveries to this store go."
-        onSave={save}
-        isPending={isPending}
-        isDirty={isDirty}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <SettingsField label="Street address">
-            <Input
-              value={values.address ?? ""}
-              onChange={(e) => set("address", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Region">
-            <Input
-              value={values.region ?? ""}
-              onChange={(e) => set("region", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="District">
-            <Input
-              value={values.district ?? ""}
-              onChange={(e) => set("district", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Ward">
-            <Input
-              value={values.ward ?? ""}
-              onChange={(e) => set("ward", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
-          <SettingsField label="Postal code">
-            <Input
-              value={values.postalCode ?? ""}
-              onChange={(e) => set("postalCode", e.target.value)}
-              disabled={isPending}
-            />
-          </SettingsField>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Street address">
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<Home className="h-3.5 w-3.5" />}
+              placeholder="Street, building, floor"
+                value={values.address ?? ""}
+                onChange={(e) => set("address", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Region">
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<MapPin className="h-3.5 w-3.5" />}
+              placeholder="e.g. Dar es Salaam"
+                value={values.region ?? ""}
+                onChange={(e) => set("region", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="District">
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<Map className="h-3.5 w-3.5" />}
+              placeholder="e.g. Kinondoni"
+                value={values.district ?? ""}
+                onChange={(e) => set("district", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Ward">
+            {(id) => (
+              <ControlInput
+                id={id}
+                prefix={<Compass className="h-3.5 w-3.5" />}
+              placeholder="e.g. Masaki"
+                value={values.ward ?? ""}
+                onChange={(e) => set("ward", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
+          <Field label="Postal code">
+            {(id) => (
+              <ControlInput
+                id={id}
+              mono
+                prefix={<Hash className="h-3.5 w-3.5" />}
+              placeholder="e.g. 14111"
+                value={values.postalCode ?? ""}
+                onChange={(e) => set("postalCode", e.target.value)}
+                disabled={isPending}
+              />
+            )}
+          </Field>
         </div>
       </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={dirtyCount}
+        isPending={isPending}
+        onSave={save}
+        onDiscard={() => setValues(baseline)}
+      />
     </div>
   );
 }

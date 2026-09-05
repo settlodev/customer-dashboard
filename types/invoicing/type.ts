@@ -69,6 +69,21 @@ export interface Proforma {
   totalAmount: number;
   acceptedAt?: string | null;
   convertedInvoiceId?: string | null;
+  // Issuer snapshot — frozen onto the proforma at CONVERSION (null before
+  // that: a live quote renders the current letterhead instead).
+  businessName?: string | null;
+  businessTin?: string | null;
+  businessVrn?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  issuerPhone?: string | null;
+  issuerEmail?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
+  issuerFrozenAt?: string | null;
   locationId: string;
   businessId: string;
   createdAt: string;
@@ -126,6 +141,8 @@ export interface Invoice {
   locationCity?: string | null;
   locationRegion?: string | null;
   issuerCountry?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
   paymentDetailsText?: string | null;
   paymentInstructionsText?: string | null;
   taxLabel?: string | null;
@@ -207,7 +224,15 @@ export interface PublicProforma {
   taxAmount: number;
   totalAmount: number;
   notes?: string | null;
-  // Issuer identity (resolved server-side from the business/location).
+  /**
+   * Set once the proforma has been converted: the invoice it became and that
+   * invoice's own public token (→ `/inv/{token}`). The proforma itself is a
+   * frozen snapshot from then on — it never turns into the invoice.
+   */
+  convertedInvoiceNumber?: string | null;
+  convertedInvoiceShareToken?: string | null;
+  // Issuer identity — frozen on the row once converted, otherwise resolved
+  // server-side at view time from the business/location.
   businessName?: string | null;
   businessTin?: string | null;
   businessVrn?: string | null;
@@ -220,6 +245,16 @@ export interface PublicProforma {
   locationCity?: string | null;
   locationRegion?: string | null;
   issuerCountry?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
+}
+
+export interface PublicInvoicePayment {
+  paymentDate: string;
+  /** Payment method code (CASH, MPESA, …) — humanise for display. */
+  paymentMethod?: string | null;
+  amount: number;
+  reference?: string | null;
 }
 
 export interface PublicInvoiceLine {
@@ -247,6 +282,10 @@ export interface PublicArInvoice {
   totalAmount: number;
   paidAmount: number;
   balanceDue: number;
+  /** Payments recorded so far, oldest first — the live half of the snapshot. */
+  payments?: PublicInvoicePayment[];
+  /** The invoice's own public token (`/inv/{token}`, `/receipt/{token}`). */
+  shareToken?: string | null;
   /** Only present once the invoice has been accepted. */
   paymentDetailsText?: string | null;
   paymentInstructionsText?: string | null;
@@ -262,6 +301,28 @@ export interface PublicArInvoice {
   locationCity?: string | null;
   locationRegion?: string | null;
   issuerCountry?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
+}
+
+// ── Fiscal (VFD) print ────────────────────────────────────────────────
+
+/**
+ * `POST /api/v1/invoices/{id}/prints/vfd` — the invoice fiscalised through the
+ * location's TRA VFD. Same shape as the order print (`VfdPrintResponse` in
+ * types/orders) so one receipt sheet renders both; idempotent per invoice.
+ */
+export interface InvoiceVfdPrintResponse {
+  invoiceId: string;
+  invoiceNumber: string;
+  fiscalReceiptNumber: string | null;
+  fiscalDeviceSerial: string | null;
+  signedAt: string | null;
+  qrCodeData: string | null;
+  verificationUrl: string | null;
+  accountingServiceStatus: string | null;
+  message: string | null;
+  receipt?: import("@/types/orders/type").VfdReceiptDetail | null;
 }
 
 // ── Labels & tones ────────────────────────────────────────────────────

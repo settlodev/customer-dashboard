@@ -9,6 +9,7 @@ import type { ApiResponse, FormResponse } from "@/types/types";
 import type {
   Invoice,
   InvoicePayment,
+  InvoiceVfdPrintResponse,
   InvoicingEvent,
 } from "@/types/invoicing/type";
 import {
@@ -75,6 +76,20 @@ export async function getInvoiceTimeline(
   }
 }
 
+/** Payments recorded against an invoice, oldest first. */
+export async function listInvoicePayments(id: string): Promise<InvoicePayment[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(
+      accountingUrl(`/api/v1/invoices/${id}/payments`),
+    );
+    return (parseStringify(data) as InvoicePayment[]) ?? [];
+  } catch (error) {
+    console.error("listInvoicePayments failed", error);
+    return [];
+  }
+}
+
 export async function recordInvoicePayment(
   id: string,
   values: InvoicePaymentFormValues,
@@ -135,14 +150,13 @@ export async function voidInvoice(id: string): Promise<FormResponse<Invoice>> {
 }
 
 /**
- * Issue (or re-issue) the public receipt link for a fully-paid invoice. The
- * Accounting Service mints the share token (gated on PAID) and returns the
- * invoice with `shareToken` set; the customer-facing snapshot lives at
- * `/receipt/{shareToken}`. Mirrors {@link shareProforma}.
+ * Issue (or re-issue) the invoice's public link. Invoices converted since the
+ * document-snapshot work already carry a token from conversion; for older ones
+ * the Accounting Service mints it here. One token backs both customer views —
+ * `/inv/{token}` (the invoice, showing payments as they land) and, once fully
+ * paid, `/receipt/{token}`.
  */
-export async function shareInvoiceReceipt(
-  id: string,
-): Promise<FormResponse<Invoice>> {
+export async function shareInvoice(id: string): Promise<FormResponse<Invoice>> {
   try {
     const apiClient = new ApiClient();
     const data = (await apiClient.post(
@@ -153,11 +167,35 @@ export async function shareInvoiceReceipt(
     revalidatePath(`/invoices/${id}`);
     return {
       responseType: "success",
-      message: "Receipt link is ready",
+      message: "Customer link is ready",
       data: parseStringify(data),
     };
   } catch (error: unknown) {
-    return errorResponse<Invoice>(error, "Failed to share receipt");
+    return errorResponse<Invoice>(error, "Failed to share invoice");
+  }
+}
+
+/**
+ * Fiscalise the invoice via the location's VFD (TRA) and return the signed
+ * receipt. Idempotent: a reprint returns the stored fiscal receipt. Failures
+ * (not registered / awaiting activation / DIRM rejection) surface as
+ * `error.message` for the printable route to show.
+ */
+export async function getInvoiceVfdReceipt(
+  id: string,
+): Promise<{ vfd: InvoiceVfdPrintResponse } | { error: string }> {
+  try {
+    const apiClient = new ApiClient();
+    const data = (await apiClient.post(
+      accountingUrl(`/api/v1/invoices/${id}/prints/vfd`),
+      {},
+    )) as InvoiceVfdPrintResponse;
+    return parseStringify({ vfd: data });
+  } catch (error: unknown) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Failed to issue the VFD receipt",
+    };
   }
 }
 

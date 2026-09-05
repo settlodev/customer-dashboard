@@ -28,7 +28,6 @@ const STATUS_TEXT: Record<StockStatus, string> = {
 interface Props {
   from: string;
   to: string;
-  asOf: string;
   search: string;
   /** Active stock-category id, or "" for every category. */
   categoryId: string;
@@ -47,7 +46,6 @@ interface Props {
 export function StockMovementExportButton({
   from,
   to,
-  asOf,
   search,
   categoryId,
   lens,
@@ -63,14 +61,21 @@ export function StockMovementExportButton({
         const report = await getStockMovementReport({
           from,
           to,
-          asOf,
-          page: 0,
+                  page: 0,
           size: 10000,
           search: search || undefined,
           categoryId: categoryId || undefined,
           lens,
           sort: sort || undefined,
         });
+        if (!report) {
+          toast({
+            variant: "destructive",
+            title: "Couldn't export",
+            description: "The report could not be loaded. Please try again.",
+          });
+          return;
+        }
         if (report.content.length === 0) {
           toast({
             variant: "destructive",
@@ -120,7 +125,6 @@ function downloadCsv(
     "Opening",
     "In",
     "Out",
-    "Net",
     "Closing",
     `Avg cost (${currency})`,
     `Value (${currency})`,
@@ -129,10 +133,15 @@ function downloadCsv(
     "Available",
     "In transit",
     "Reorder point",
+    "Forecast reorder point",
+    "Low reason",
     "Daily use",
     "Days of cover",
     "Days idle",
     "Last movement",
+    "Expiring qty",
+    "Earliest expiry",
+    "Days to expiry",
   ];
 
   const body = rows.map((r) =>
@@ -143,7 +152,6 @@ function downloadCsv(
       Math.round(r.opening),
       Math.round(r.qtyIn),
       Math.round(r.qtyOut),
-      Math.round(r.net),
       Math.round(r.closing),
       fmtCost(r.avgCost),
       Math.round(r.value),
@@ -152,10 +160,15 @@ function downloadCsv(
       Math.round(r.available),
       Math.round(r.inTransit),
       r.reorderPoint ?? "",
+      r.forecastReorderPoint != null ? fmtCost(r.forecastReorderPoint) : "",
+      r.lowReason ?? "",
       r.dailyUse ?? "",
       r.daysOfCover ?? "",
       r.daysIdle ?? "",
       r.lastMovementAt ?? "",
+      r.expiringQty > 0 ? Math.round(r.expiringQty) : "",
+      r.earliestExpiry ?? "",
+      r.daysToExpiry ?? "",
     ]
       .map(csvCell)
       .join(","),

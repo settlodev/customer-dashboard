@@ -1,12 +1,24 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Hash,
+  Landmark,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Tag,
+  Tags,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldHint,
+  StandaloneField as Field,
+  standaloneLabelClass,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +27,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
+import {
+  RowTag,
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
 import { ChartOfAccountSelector } from "@/components/widgets/chart-of-account-selector";
 import {
   createExpenseCategory,
@@ -105,146 +126,181 @@ export function ExpenseCategoriesPanel() {
       if (result.responseType === "success") await reload();
     });
 
+  // The API returns creation order; displayOrder is the merchant's own ranking.
+  const sorted = [...items].sort((a, b) => a.displayOrder - b.displayOrder);
+
   return (
     <SettingsSection
       title="Expense categories"
       description="Categorize spending. Each category can map to a default GL expense account."
+      icon={<Tags className="h-4 w-4" />}
       footer={
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" onClick={openNew}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add category
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {editing ? `Edit ${editing.name}` : "New expense category"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Code</Label>
-                  <Input
-                    value={form.code}
-                    onChange={(e) =>
-                      setForm({ ...form, code: e.target.value })
-                    }
-                    placeholder="EXP-001"
-                  />
+        <div className="flex flex-wrap items-center gap-2">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={openNew}>
+                <Plus className="h-3.5 w-3.5" /> Add category
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editing ? `Edit ${editing.name}` : "New expense category"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3.5">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3">
+                  <Field label="Name" required className="sm:col-span-2">
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        maxLength={100}
+                        prefix={<Tag className="h-3.5 w-3.5" />}
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        placeholder="Utilities"
+                      />
+                    )}
+                  </Field>
+                  <Field label="Code" hint="Your own reference." optional>
+                    {(id) => (
+                      <ControlInput
+                        id={id}
+                        mono
+                        maxLength={20}
+                        prefix={<Hash className="h-3.5 w-3.5" />}
+                        value={form.code}
+                        onChange={(e) => setForm({ ...form, code: e.target.value })}
+                        placeholder="EXP-001"
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label="Description"
+                    hint="Shown to staff when they pick a category."
+                    optional
+                    className="sm:col-span-3"
+                  >
+                    {(id) => (
+                      <ControlTextarea
+                        id={id}
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm({ ...form, description: e.target.value })
+                        }
+                        rows={2}
+                        maxLength={500}
+                        placeholder="Electricity, water and internet bills"
+                      />
+                    )}
+                  </Field>
+                  {/* The account picker is its own combobox trigger, so it gets a
+                      bare label instead of a Field render-prop id. */}
+                  <div className="min-w-0 space-y-[7px] sm:col-span-3">
+                    <span className={standaloneLabelClass}>
+                      <Landmark className="h-3.5 w-3.5 text-muted-2" />
+                      Default GL account
+                      <span className="ml-auto font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                        Optional
+                      </span>
+                    </span>
+                    <ChartOfAccountSelector
+                      accountType="EXPENSE"
+                      value={form.chartOfAccountId}
+                      onChange={(v) => setForm({ ...form, chartOfAccountId: v })}
+                      placeholder="Optional"
+                    />
+                    <FieldHint>
+                      Expenses filed under this category post here by default.
+                    </FieldHint>
+                  </div>
                 </div>
               </div>
-              <div>
-                <Label>Default GL account</Label>
-                <ChartOfAccountSelector
-                  accountType="EXPENSE"
-                  value={form.chartOfAccountId}
-                  onChange={(v) => setForm({ ...form, chartOfAccountId: v })}
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setOpen(false)}
-                disabled={isPending}
-              >
-                Cancel
-              </Button>
-              <Button onClick={submit} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                {editing ? "Save" : "Create"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={submit}
+                  disabled={isPending || !form.name.trim()}
+                >
+                  {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isPending
+                    ? "Saving…"
+                    : editing
+                      ? "Save changes"
+                      : "Create category"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => reload()}
+            disabled={loading || isPending}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       }
     >
-      <Card className="border-line">
-        <CardContent className="px-0 py-0">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Loading…
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No categories defined yet.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Default account</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {[...items]
-                  .sort((a, b) => a.displayOrder - b.displayOrder)
-                  .map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3">
-                      {c.parentId && <span className="ml-3" />}
-                      {c.name}
-                      {c.systemSeeded && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                          System
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {c.code ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                      {c.chartOfAccountId
-                        ? c.chartOfAccountId.slice(0, 8) + "…"
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEdit(c)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={() => onDelete(c)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      <SettingsTableCard
+        loading={loading}
+        isEmpty={items.length === 0}
+        emptyLabel="No categories defined yet."
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className={tableHeadRowClass}>
+              <th className={thClass}>Name</th>
+              <th className={thClass}>Code</th>
+              <th className={thClass}>Default account</th>
+              <th className={`${thClass} text-right`}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((c) => (
+              <tr key={c.id} className={trClass}>
+                <td className={tdClass}>
+                  {/* Child categories sit one notch in from their parent. */}
+                  {c.parentId && <span className="ml-3" />}
+                  {c.name}
+                  {c.systemSeeded && <RowTag>System</RowTag>}
+                </td>
+                <td className={`${tdClass} font-mono text-[12px]`}>
+                  {c.code ?? "—"}
+                </td>
+                <td
+                  className={`${tdClass} font-mono text-[12px] text-muted-foreground`}
+                >
+                  {c.chartOfAccountId
+                    ? c.chartOfAccountId.slice(0, 8) + "…"
+                    : "—"}
+                </td>
+                <td className={tdActionsClass}>
+                  <div className="inline-flex items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
+                      Edit
+                    </Button>
+                    <ConfirmDeleteButton
+                      disabled={isPending}
+                      onConfirm={() => onDelete(c)}
+                      title={`Delete ${c.name}?`}
+                      description="Expenses already filed under this category keep their history, but it can no longer be picked when recording new spending."
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SettingsTableCard>
     </SettingsSection>
   );
 }

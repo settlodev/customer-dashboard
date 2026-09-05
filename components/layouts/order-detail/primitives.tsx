@@ -109,6 +109,7 @@ export function PanelCard({
   title,
   count,
   pad0,
+  actions,
   children,
 }: {
   icon: React.ReactNode;
@@ -117,6 +118,8 @@ export function PanelCard({
   /** Zero-pad the body so edge-to-edge content (e.g. `DetailTable`) can span
    *  flush with the card's border — the `.od-card.pad0` treatment. */
   pad0?: boolean;
+  /** Right-aligned controls in the header row (a button, a menu). */
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -132,6 +135,7 @@ export function PanelCard({
           {title}
         </h3>
         {count != null && <CountChip>{count}</CountChip>}
+        {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
       </div>
       <div className={pad0 ? "" : "px-5 pb-5 pt-3.5"}>{children}</div>
     </Card>

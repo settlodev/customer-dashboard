@@ -4,12 +4,29 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  Building2,
+  Globe,
+  Loader2,
+  MapPin,
+  Plus,
+  RefreshCw,
+  SlidersHorizontal,
+} from "lucide-react";
+import { NumericFormat } from "react-number-format";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlBox,
+  ControlTextarea,
+  FieldHint,
+  FieldLabel,
+  ToggleRow,
+  controlInputClass,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -23,19 +40,10 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { NumericFormat } from "react-number-format";
+import { cn } from "@/lib/utils";
 import {
   deleteManualExchangeRate,
   fetchCurrentExchangeRates,
@@ -49,7 +57,19 @@ import {
   type SystemExchangeRate,
 } from "@/types/exchange-rate/type";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSection } from "../shared/settings-section";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
 import CurrencySelector from "@/components/widgets/currency-selector";
+
+const ICON = "h-3.5 w-3.5";
 
 /**
  * Panel for the location settings page. Lets operators set manual
@@ -63,7 +83,6 @@ export function ExchangeRatesPanel({ base = "TZS" }: { base?: string }) {
   const [systemRates, setSystemRates] = useState<SystemExchangeRate[]>([]);
   const [isLoadingSystem, setIsLoadingSystem] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<ManualExchangeRate | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
@@ -88,13 +107,11 @@ export function ExchangeRatesPanel({ base = "TZS" }: { base?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base]);
 
-  const onDelete = () => {
-    if (!confirmDelete) return;
+  const onDelete = (rate: ManualExchangeRate) => {
     startTransition(async () => {
-      const res = await deleteManualExchangeRate(confirmDelete.id);
+      const res = await deleteManualExchangeRate(rate.id);
       if (res.responseType === "success") {
         toast({ variant: "success", title: "Removed", description: res.message });
-        setConfirmDelete(null);
         reload();
         router.refresh();
       } else {
@@ -117,137 +134,94 @@ export function ExchangeRatesPanel({ base = "TZS" }: { base?: string }) {
         onRefresh={reloadSystem}
       />
 
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">Manual overrides</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              Location-scoped rates take priority; business-scoped rates apply
-              when no location override exists. An override replaces the daily
-              system rate for its pair.
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)} disabled={isPending}>
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add rate
-          </Button>
-        </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="py-8 text-center">
-            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        ) : rates.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            No manual rate overrides. Lookups fall through to the daily system
-            rate automatically.
-          </p>
-        ) : (
-          <div className="rounded-md border overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Pair</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Inverse</TableHead>
-                  <TableHead>Scope</TableHead>
-                  <TableHead>Effective</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="w-[80px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rates.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-mono whitespace-nowrap">
-                      {r.sourceCurrency}
-                      <ArrowRight className="h-3 w-3 inline mx-1 text-muted-foreground" />
-                      {r.targetCurrency}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {Number(r.rate).toLocaleString(undefined, {
-                        maximumFractionDigits: 8,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {Number(r.inverseRate).toLocaleString(undefined, {
-                        maximumFractionDigits: 8,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          r.scope === "LOCATION"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                            : "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
-                        }`}
-                      >
-                        <ShieldCheck className="h-3 w-3" />
-                        {r.scope === "LOCATION" ? "Location" : "Business"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {r.effectiveDate}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
-                      {r.notes || "\u2014"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-red-600 hover:text-red-600"
-                        onClick={() => setConfirmDelete(r)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-
-      <ManualRateDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSaved={reload}
-      />
-
-      <Dialog
-        open={!!confirmDelete}
-        onOpenChange={(o) => !o && setConfirmDelete(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Remove rate override?</DialogTitle>
-            <DialogDescription>
-              Removes the{" "}
-              <strong>
-                {confirmDelete?.sourceCurrency} → {confirmDelete?.targetCurrency}
-              </strong>{" "}
-              {confirmDelete?.scope.toLowerCase()} override. Conversions fall
-              back to the next layer in the rate hierarchy (business → system).
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+      <SettingsSection
+        icon={<SlidersHorizontal className="h-4 w-4" />}
+        title="Manual overrides"
+        description="Location-scoped rates take priority; business-scoped rates apply when no location override exists. An override replaces the daily system rate for its pair."
+        footer={
+          <>
             <Button
-              variant="secondary"
-              onClick={() => setConfirmDelete(null)}
+              size="sm"
+              onClick={() => setDialogOpen(true)}
               disabled={isPending}
             >
-              Cancel
+              <Plus className={ICON} /> Add rate
             </Button>
-            <Button variant="destructive" onClick={onDelete} disabled={isPending}>
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+            <ManualRateDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              onSaved={reload}
+            />
+          </>
+        }
+      >
+        <SettingsTableCard
+          loading={isLoading}
+          isEmpty={rates.length === 0}
+          emptyLabel="No manual rate overrides. Lookups fall through to the daily system rate automatically."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Pair</th>
+                <th className={`${thClass} text-right`}>Rate</th>
+                <th className={`${thClass} text-right`}>Inverse</th>
+                <th className={thClass}>Scope</th>
+                <th className={thClass}>Effective</th>
+                <th className={thClass}>Notes</th>
+                <th className={`${thClass} text-right`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rates.map((r) => (
+                <tr key={r.id} className={trClass}>
+                  <td className={`${tdClass} whitespace-nowrap font-mono text-[12px]`}>
+                    {r.sourceCurrency}
+                    <ArrowRight className="mx-1 inline h-3 w-3 text-muted-foreground" />
+                    {r.targetCurrency}
+                  </td>
+                  <td className={`${tdClass} text-right font-mono font-medium tabular-nums`}>
+                    {Number(r.rate).toLocaleString(undefined, {
+                      maximumFractionDigits: 8,
+                    })}
+                  </td>
+                  <td className={`${tdClass} text-right font-mono tabular-nums text-ink-3`}>
+                    {Number(r.inverseRate).toLocaleString(undefined, {
+                      maximumFractionDigits: 8,
+                    })}
+                  </td>
+                  <td className={tdClass}>
+                    {r.scope === "LOCATION" ? (
+                      <Badge variant="pos" className="font-normal">
+                        <MapPin className="h-3 w-3" /> Location
+                      </Badge>
+                    ) : (
+                      <Badge variant="soft" className="font-normal">
+                        <Building2 className="h-3 w-3" /> Business
+                      </Badge>
+                    )}
+                  </td>
+                  <td className={`${tdClass} whitespace-nowrap text-ink-3`}>
+                    {r.effectiveDate}
+                  </td>
+                  <td className={`${tdClass} max-w-[180px] truncate text-ink-3`}>
+                    {r.notes || "—"}
+                  </td>
+                  <td className={tdActionsClass}>
+                    <ConfirmDeleteButton
+                      disabled={isPending}
+                      onConfirm={() => onDelete(r)}
+                      confirmLabel="Remove override"
+                      title={`Remove the ${r.sourceCurrency} → ${r.targetCurrency} override?`}
+                      description={`Removes the ${r.scope.toLowerCase()} override. Conversions fall back to the next layer in the rate hierarchy (business → system).`}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SettingsTableCard>
+      </SettingsSection>
     </div>
   );
 }
@@ -295,6 +269,11 @@ function ManualRateDialog({
     });
   };
 
+  // Watched so the rate control can show the pair it converts into.
+  const sourceCurrency = form.watch("sourceCurrency");
+  const targetCurrency = form.watch("targetCurrency");
+  const rate = form.watch("rate");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -303,7 +282,7 @@ function ManualRateDialog({
           <DialogDescription>
             Overrides the system rate for this currency pair. Enter the
             multiplier such that{" "}
-            <code className="px-1 rounded bg-muted text-[11px]">
+            <code className="rounded bg-canvas px-1 text-[11px]">
               amount_in_source × rate = amount_in_target
             </code>
             .
@@ -311,14 +290,14 @@ function ManualRateDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={form.handleSubmit(submit)} className="space-y-3.5">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="sourceCurrency"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>From</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>From</FieldLabel>
                     <FormControl>
                       <CurrencySelector
                         value={field.value}
@@ -334,8 +313,8 @@ function ManualRateDialog({
                 control={form.control}
                 name="targetCurrency"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>To</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel required>To</FieldLabel>
                     <FormControl>
                       <CurrencySelector
                         value={field.value}
@@ -353,22 +332,33 @@ function ManualRateDialog({
               control={form.control}
               name="rate"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Rate</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel required>Rate</FieldLabel>
                   <FormControl>
-                    <NumericFormat
-                      customInput={Input}
-                      value={field.value}
-                      onValueChange={(v) =>
-                        field.onChange(v.value === "" ? 0 : Number(v.value))
-                      }
-                      thousandSeparator
-                      decimalScale={8}
-                      allowNegative={false}
-                      placeholder="e.g. 2500"
-                      disabled={isPending}
-                    />
+                    <ControlBox
+                      prefix={<ArrowLeftRight className={ICON} />}
+                      suffix={targetCurrency || undefined}
+                    >
+                      <NumericFormat
+                        className={cn(controlInputClass, "font-mono tabular-nums")}
+                        value={field.value}
+                        onValueChange={(v) =>
+                          field.onChange(v.value === "" ? 0 : Number(v.value))
+                        }
+                        thousandSeparator
+                        decimalScale={8}
+                        allowNegative={false}
+                        placeholder="e.g. 2500"
+                        disabled={isPending}
+                      />
+                    </ControlBox>
                   </FormControl>
+                  {sourceCurrency && targetCurrency && (
+                    <FieldHint>
+                      Multiplier applied to a {sourceCurrency} amount to get{" "}
+                      {targetCurrency}.
+                    </FieldHint>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -378,18 +368,14 @@ function ManualRateDialog({
               control={form.control}
               name="locationScoped"
               render={({ field }) => (
-                <FormItem className="flex items-start gap-3 rounded-md border p-3">
-                  <Switch
+                <FormItem className="space-y-0">
+                  <ToggleRow
+                    label="Scope to this location only"
+                    hint="Off = applies to every location in the business."
                     checked={!!field.value}
-                    onCheckedChange={field.onChange}
+                    onChange={field.onChange}
                     disabled={isPending}
                   />
-                  <div className="space-y-0.5">
-                    <FormLabel>Scope to this location only</FormLabel>
-                    <p className="text-[11px] text-muted-foreground">
-                      Off = applies to every location in the business.
-                    </p>
-                  </div>
                 </FormItem>
               )}
             />
@@ -398,10 +384,10 @@ function ManualRateDialog({
               control={form.control}
               name="notes"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                <FormItem className="min-w-0 space-y-[7px]">
+                  <FieldLabel optional>Notes</FieldLabel>
                   <FormControl>
-                    <Textarea
+                    <ControlTextarea
                       rows={2}
                       placeholder="Why this override?"
                       {...field}
@@ -417,15 +403,20 @@ function ManualRateDialog({
             <DialogFooter>
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save rate
+              <Button
+                type="submit"
+                disabled={
+                  isPending || !sourceCurrency || !targetCurrency || !rate
+                }
+              >
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isPending ? "Saving…" : "Save rate"}
               </Button>
             </DialogFooter>
           </form>
@@ -464,96 +455,86 @@ function CurrentRatesCard({
     : null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle className="text-base">
-            Current rates · base {baseCode}
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            {freshestLabel
-              ? `Latest system fetch: ${freshestLabel}.`
-              : "Daily rates fetched automatically by the platform."}{" "}
-            A row marked <strong>Override</strong> is a manual rate you or your
-            business has set; otherwise it&apos;s the daily system rate.
-          </p>
-        </div>
+    <SettingsSection
+      icon={<Globe className="h-4 w-4" />}
+      title={`Current rates · base ${baseCode}`}
+      description={`${
+        freshestLabel
+          ? `Latest system fetch: ${freshestLabel}.`
+          : "Daily rates fetched automatically by the platform."
+      } A row marked “Override” is a manual rate you or your business has set; otherwise it's the daily system rate.`}
+      footer={
         <Button
           size="sm"
           variant="outline"
           onClick={onRefresh}
           disabled={isLoading}
         >
-          {isLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-          Refresh
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className={ICON} />
+          )}
+          {isLoading ? "Refreshing…" : "Refresh"}
         </Button>
-      </CardHeader>
-      <CardContent>
-        {isLoading && rates.length === 0 ? (
-          <div className="py-8 text-center">
-            <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        ) : sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">
-            No rates available yet — the daily fetch hasn&apos;t completed.
-          </p>
-        ) : (
-          <div className="rounded-md border overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Pair</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Inverse</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Effective</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((r) => (
-                  <TableRow key={`${r.sourceCurrency}-${r.targetCurrency}`}>
-                    <TableCell className="font-mono whitespace-nowrap">
-                      {r.sourceCurrency}
-                      <ArrowRight className="h-3 w-3 inline mx-1 text-muted-foreground" />
-                      {r.targetCurrency}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {Number(r.rate).toLocaleString(undefined, {
-                        maximumFractionDigits: 6,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {Number(r.inverseRate).toLocaleString(undefined, {
-                        maximumFractionDigits: 8,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          r.source === "MANUAL"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                            : r.stale
-                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
-                              : "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
-                        }`}
-                      >
-                        {r.source === "MANUAL"
-                          ? "Override"
-                          : r.stale
-                            ? "System · stale"
-                            : "System"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {r.effectiveDate ?? "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      }
+    >
+      <SettingsTableCard
+        loading={isLoading && rates.length === 0}
+        isEmpty={sorted.length === 0}
+        emptyLabel="No rates available yet — the daily fetch hasn't completed."
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className={tableHeadRowClass}>
+              <th className={thClass}>Pair</th>
+              <th className={`${thClass} text-right`}>Rate</th>
+              <th className={`${thClass} text-right`}>Inverse</th>
+              <th className={thClass}>Source</th>
+              <th className={thClass}>Effective</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => (
+              <tr key={`${r.sourceCurrency}-${r.targetCurrency}`} className={trClass}>
+                <td className={`${tdClass} whitespace-nowrap font-mono text-[12px]`}>
+                  {r.sourceCurrency}
+                  <ArrowRight className="mx-1 inline h-3 w-3 text-muted-foreground" />
+                  {r.targetCurrency}
+                </td>
+                <td className={`${tdClass} text-right font-mono font-medium tabular-nums`}>
+                  {Number(r.rate).toLocaleString(undefined, {
+                    maximumFractionDigits: 6,
+                  })}
+                </td>
+                <td className={`${tdClass} text-right font-mono tabular-nums text-ink-3`}>
+                  {Number(r.inverseRate).toLocaleString(undefined, {
+                    maximumFractionDigits: 8,
+                  })}
+                </td>
+                <td className={tdClass}>
+                  {r.source === "MANUAL" ? (
+                    <Badge variant="pos" className="font-normal">
+                      Override
+                    </Badge>
+                  ) : r.stale ? (
+                    <Badge variant="warn" className="font-normal">
+                      System · stale
+                    </Badge>
+                  ) : (
+                    <Badge variant="soft" className="font-normal">
+                      System
+                    </Badge>
+                  )}
+                </td>
+                <td className={`${tdClass} whitespace-nowrap text-ink-3`}>
+                  {r.effectiveDate ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SettingsTableCard>
+    </SettingsSection>
   );
 }

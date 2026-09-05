@@ -1,13 +1,17 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { Boxes, CalendarClock, ClipboardList, PackageCheck, Timer } from "lucide-react";
+
 import {
-  SettingsSection,
-  SettingsSwitchRow,
-  SettingsRadioRows,
-} from "../shared/settings-section";
+  ControlInput,
+  RadioCards,
+  StandaloneField as Field,
+  ToggleRow,
+} from "@/components/ui/field";
+import { SettingsSection, parseOptionalNumber } from "../shared/settings-section";
 import { useSettingsPanel } from "../shared/use-settings-panel";
 import { PanelHeader } from "../shared/panel-header";
+import { SettingsSaveBar } from "../shared/settings-save-bar";
 import type { LocationSettings } from "@/types/location-settings/type";
 
 /**
@@ -17,18 +21,18 @@ import type { LocationSettings } from "@/types/location-settings/type";
 const DEDUCT_OPTIONS = [
   {
     value: "deductStockOnItemChange",
-    label: "Deduct on item change",
+    label: "On item change",
     description: "Cut stock the moment an item is added or modified in an order.",
   },
   {
     value: "deductStockOnOrderClose",
-    label: "Deduct on order close",
+    label: "On order close",
     description: "Cut stock when the order is finalised and closed.",
   },
   {
     value: "deductStockOnPartialPay",
-    label: "Deduct on partial pay",
-    description: "Cut stock as soon as any payment is received — useful for pre-orders.",
+    label: "On partial pay",
+    description: "Cut stock as soon as any payment lands — useful for pre-orders.",
   },
 ] as const;
 
@@ -53,6 +57,8 @@ const KEYS = [
   "allowStockRequestsOverAvailable",
 ] as const;
 
+const ICON = "h-3.5 w-3.5";
+
 export function StockInventoryPanel({
   settings,
   onSaved,
@@ -62,6 +68,7 @@ export function StockInventoryPanel({
 }) {
   const p = useSettingsPanel(KEYS, settings, onSaved);
   const v = p.values;
+  const d = p.isPending;
 
   // First flag wins if a legacy record has more than one set; picking an
   // option clears the others, which normalises the record on save. Records
@@ -80,181 +87,192 @@ export function StockInventoryPanel({
       />
 
       <SettingsSection
+        icon={<Boxes className="h-4 w-4" />}
         title="Stock deduction timing"
-        description="When the POS actually cuts inventory. Choose one — stock is deducted once, at this point in the order."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
+        description="When the POS actually cuts inventory. Stock is deducted once, at whichever point you pick."
       >
-        <SettingsRadioRows
+        <RadioCards
           value={deductTrigger}
           onChange={setDeductTrigger}
           options={DEDUCT_OPTIONS}
-          disabled={p.isPending}
+          disabled={d}
         />
       </SettingsSection>
 
       <SettingsSection
+        icon={<ClipboardList className="h-4 w-4" />}
         title="Inventory policy"
         description="Day-to-day rules: alerts, negative balances, and expiry tracking."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
       >
-        <SettingsSwitchRow
-          label="Low-stock alerts"
-          description="Notify when on-hand falls below the threshold."
-          checked={!!v.enableLowStockAlerts}
-          onChange={(x) => p.setField("enableLowStockAlerts", x)}
-          disabled={p.isPending}
-        />
-        {v.enableLowStockAlerts && (
-          <Field label="Default low-stock threshold">
-            <Input
-              type="number"
-              min={0}
-              value={v.defaultLowStockThreshold ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "defaultLowStockThreshold",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
-          </Field>
-        )}
-        <SettingsSwitchRow
-          label="Allow negative stock"
-          description="Let staff sell items even when on-hand reaches zero."
-          checked={!!v.allowNegativeStock}
-          onChange={(x) => p.setField("allowNegativeStock", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Track expiry dates"
-          description="Capture and act on expiry per stock batch."
-          checked={!!v.trackExpiryDates}
-          onChange={(x) => p.setField("trackExpiryDates", x)}
-          disabled={p.isPending}
-        />
-      </SettingsSection>
-
-      <SettingsSection
-        title="Stock requests against this location"
-        description="Applies when a store or another location raises a stock request with this location as the source."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
-      >
-        <SettingsSwitchRow
-          label="Allow stock requests over available quantity"
-          description="Let others request more than this location currently has on hand — useful when restock is already inbound. Off means each requested line is capped at available stock when the request is raised."
-          checked={!!v.allowStockRequestsOverAvailable}
-          onChange={(x) => p.setField("allowStockRequestsOverAvailable", x)}
-          disabled={p.isPending}
-        />
-      </SettingsSection>
-
-      <SettingsSection
-        title="Inventory features"
-        description="Unlock advanced inventory workflows in the dashboard. Some are gated by your plan."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
-      >
-        <SettingsSwitchRow
-          label="Batch tracking"
-          description="Track batches, consume FEFO/FIFO, surface batch-level history."
-          checked={!!v.batchTrackingEnabled}
-          onChange={(x) => p.setField("batchTrackingEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Quality inspection on GRN"
-          description="Puts received goods on inspection hold until signed off."
-          checked={!!v.qualityInspectionEnabled}
-          onChange={(x) => p.setField("qualityInspectionEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Auto-reorder"
-          description="Auto-draft an LPO when available qty falls below a variant's reorder point."
-          checked={!!v.autoReorderEnabled}
-          onChange={(x) => p.setField("autoReorderEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Auto day close (inventory snapshots)"
-          description="Automatically produce a daily closing snapshot for reconciliation."
-          checked={!!v.autoClosingEnabled}
-          onChange={(x) => p.setField("autoClosingEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Cycle counting / stock takes"
-          checked={!!v.cycleCountingEnabled}
-          onChange={(x) => p.setField("cycleCountingEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Request for Quotation (RFQ)"
-          description="Raise quote requests across multiple suppliers, award the winner."
-          checked={!!v.rfqEnabled}
-          onChange={(x) => p.setField("rfqEnabled", x)}
-          disabled={p.isPending}
-        />
-      </SettingsSection>
-
-      <SettingsSection
-        title="Timing windows"
-        description="Alert and reservation horizons."
-        onSave={p.save}
-        isPending={p.isPending}
-        isDirty={p.isDirty}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Field label="Expiry alert (days ahead)">
-            <Input
-              type="number"
-              min={1}
-              max={365}
-              value={v.expiryAlertDays ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "expiryAlertDays",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
-          </Field>
-          <Field label="Reservation expiry (minutes)">
-            <Input
-              type="number"
-              min={1}
-              max={1440}
-              value={v.reservationExpiryMinutes ?? ""}
-              onChange={(e) =>
-                p.setField(
-                  "reservationExpiryMinutes",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-              disabled={p.isPending}
-            />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ToggleRow
+            label="Low-stock alerts"
+            hint="Notify when on-hand falls below the threshold."
+            checked={!!v.enableLowStockAlerts}
+            onChange={(x) => p.setField("enableLowStockAlerts", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Allow negative stock"
+            hint="Let staff sell items even when on-hand reaches zero."
+            checked={!!v.allowNegativeStock}
+            onChange={(x) => p.setField("allowNegativeStock", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Track expiry dates"
+            hint="Capture and act on expiry per stock batch."
+            checked={!!v.trackExpiryDates}
+            onChange={(x) => p.setField("trackExpiryDates", x)}
+            disabled={d}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field
+            label="Default low-stock threshold"
+            hint="Used for variants with no threshold of their own."
+          >
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={0}
+                suffix="units"
+                prefix={<PackageCheck className={ICON} />}
+                value={v.defaultLowStockThreshold ?? ""}
+                onChange={(e) =>
+                  p.setField("defaultLowStockThreshold", parseOptionalNumber(e.target.value))
+                }
+                placeholder="10"
+                disabled={d || !v.enableLowStockAlerts}
+              />
+            )}
           </Field>
         </div>
       </SettingsSection>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
-      {children}
+      <SettingsSection
+        icon={<PackageCheck className="h-4 w-4" />}
+        title="Stock requests against this location"
+        description="Applies when a store or another location raises a stock request with this location as the source."
+      >
+        <ToggleRow
+          label="Allow requests over available quantity"
+          hint="Let others request more than this location has on hand — useful when restock is already inbound. Off caps each requested line at available stock."
+          checked={!!v.allowStockRequestsOverAvailable}
+          onChange={(x) => p.setField("allowStockRequestsOverAvailable", x)}
+          disabled={d}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        icon={<Boxes className="h-4 w-4" />}
+        title="Inventory features"
+        description="Unlock advanced inventory workflows in the dashboard. Some are gated by your plan."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ToggleRow
+            label="Batch tracking"
+            hint="Track batches, consume FEFO or FIFO, surface batch history."
+            checked={!!v.batchTrackingEnabled}
+            onChange={(x) => p.setField("batchTrackingEnabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Quality inspection on GRN"
+            hint="Put received goods on inspection hold until signed off."
+            checked={!!v.qualityInspectionEnabled}
+            onChange={(x) => p.setField("qualityInspectionEnabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Auto-reorder"
+            hint="Draft a purchase order when available falls below a reorder point."
+            checked={!!v.autoReorderEnabled}
+            onChange={(x) => p.setField("autoReorderEnabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Auto day close snapshots"
+            hint="Produce a daily closing snapshot for reconciliation."
+            checked={!!v.autoClosingEnabled}
+            onChange={(x) => p.setField("autoClosingEnabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Cycle counting & stock takes"
+            hint="Count subsets of stock on a schedule without closing shop."
+            checked={!!v.cycleCountingEnabled}
+            onChange={(x) => p.setField("cycleCountingEnabled", x)}
+            disabled={d}
+          />
+          <ToggleRow
+            label="Request for quotation"
+            hint="Raise quote requests across suppliers, then award the winner."
+            checked={!!v.rfqEnabled}
+            onChange={(x) => p.setField("rfqEnabled", x)}
+            disabled={d}
+          />
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        icon={<Timer className="h-4 w-4" />}
+        title="Timing windows"
+        description="Alert and reservation horizons."
+      >
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Expiry alert lead time" hint="How far ahead of expiry to warn.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                max={365}
+                suffix="days"
+                prefix={<CalendarClock className={ICON} />}
+                value={v.expiryAlertDays ?? ""}
+                onChange={(e) =>
+                  p.setField("expiryAlertDays", parseOptionalNumber(e.target.value))
+                }
+                placeholder="30"
+                disabled={d || !v.trackExpiryDates}
+              />
+            )}
+          </Field>
+          <Field label="Reservation expiry" hint="Held stock is released after this.">
+            {(id) => (
+              <ControlInput
+                id={id}
+                type="number"
+                inputMode="numeric"
+                mono
+                min={1}
+                max={1440}
+                suffix="min"
+                prefix={<Timer className={ICON} />}
+                value={v.reservationExpiryMinutes ?? ""}
+                onChange={(e) =>
+                  p.setField("reservationExpiryMinutes", parseOptionalNumber(e.target.value))
+                }
+                placeholder="60"
+                disabled={d}
+              />
+            )}
+          </Field>
+        </div>
+      </SettingsSection>
+
+      <SettingsSaveBar
+        dirtyCount={p.dirtyCount}
+        isPending={p.isPending}
+        onSave={p.save}
+        onDiscard={() => p.reset()}
+      />
     </div>
   );
 }

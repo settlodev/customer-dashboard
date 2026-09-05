@@ -156,7 +156,7 @@ const Dashboard: React.FC<Props> = ({
         greeting={greeting}
         userName={userName}
         subline={subline}
-        actions={<DateRangeSegmented from={from} to={to} />}
+        actions={<DateRangeSegmented from={from} to={to} defaultPreset="today" />}
       />
 
       <PageBody>

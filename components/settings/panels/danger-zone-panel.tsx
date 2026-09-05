@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { RotateCcw, Loader2 } from "lucide-react";
+import { useTransition } from "react";
+import { RotateCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogIcon,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsSection } from "../shared/settings-section";
 import { resetLocationSettings } from "@/lib/actions/location-settings-actions";
@@ -22,7 +25,6 @@ export function DangerZonePanel({
 }: {
   onReset: (next: LocationSettings) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -39,51 +41,56 @@ export function DangerZonePanel({
       }
       toast({ title: "Settings reset", description: res.message });
       if (res.data) onReset(res.data);
-      setOpen(false);
     });
   };
 
   return (
     <SettingsSection
+      icon={<TriangleAlert className="h-4 w-4" />}
+      tone="danger"
       title="Danger zone"
       description="Destructive actions. Take them only when you really mean to."
     >
-      <div className="rounded-lg border border-red-200 bg-red-50/40 p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-red-900">
+      <div className="flex flex-col gap-3 rounded-lg border border-neg/30 bg-neg-tint p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-ink">
             Reset location settings to defaults
           </p>
-          <p className="text-xs text-red-800/80 mt-1">
+          <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
             Wipes every location-scoped toggle, threshold, receipt customisation,
             loyalty rule, and operating hour back to factory defaults. Accounting
             mappings, closure dates and payment methods are unaffected.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="destructive">
-              <RotateCcw className="h-4 w-4 mr-1.5" /> Reset to defaults
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isPending}
+              className="w-full shrink-0 sm:w-auto"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {isPending ? "Resetting…" : "Reset to defaults"}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Reset all location settings?</DialogTitle>
-              <DialogDescription>
+          </AlertDialogTrigger>
+          <AlertDialogContent tone="danger">
+            <AlertDialogIcon>
+              <RotateCcw className="h-5 w-5" />
+            </AlertDialogIcon>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset all location settings?</AlertDialogTitle>
+              <AlertDialogDescription>
                 This reverts every field on this page back to the system defaults.
                 You can&apos;t undo it without entering each value manually again.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setOpen(false)} disabled={isPending}>
-                Keep my settings
-              </Button>
-              <Button variant="destructive" onClick={confirmReset} disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Reset
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep my settings</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmReset}>Reset</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </SettingsSection>
   );

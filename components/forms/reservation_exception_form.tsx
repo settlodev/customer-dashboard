@@ -6,13 +6,11 @@ import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { UUID } from "node:crypto";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -30,11 +28,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  ControlInput,
+  ControlTextarea,
+  FieldLabel,
+  controlSelectTriggerClass,
+} from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, CalendarOff } from "lucide-react";
+import { SettingsSection } from "@/components/settings/shared/settings-section";
+import { ConfirmDeleteButton } from "@/components/settings/shared/confirm-delete-button";
+import {
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "@/components/settings/shared/settings-table";
+import { Loader2, Plus, CalendarDays, CalendarOff, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import {
@@ -55,11 +66,11 @@ interface Props {
 }
 
 const EXCEPTION_TYPE_COLORS: Record<ReservationExceptionType, string> = {
-  [ReservationExceptionType.CLOSED]: "bg-red-100 text-red-800",
-  [ReservationExceptionType.HOLIDAY]: "bg-purple-100 text-purple-800",
-  [ReservationExceptionType.MAINTENANCE]: "bg-yellow-100 text-yellow-800",
-  [ReservationExceptionType.PRIVATE_EVENT]: "bg-blue-100 text-blue-800",
-  [ReservationExceptionType.BLOCKED]: "bg-orange-100 text-orange-800",
+  [ReservationExceptionType.CLOSED]: "border-neg/30 bg-neg-tint text-neg",
+  [ReservationExceptionType.HOLIDAY]: "border-primary/30 bg-primary/10 text-primary",
+  [ReservationExceptionType.MAINTENANCE]: "border-warn/30 bg-warn-tint text-warn",
+  [ReservationExceptionType.PRIVATE_EVENT]: "border-line bg-canvas text-ink-2",
+  [ReservationExceptionType.BLOCKED]: "border-neg/30 bg-neg-tint text-neg",
 };
 
 const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
@@ -107,38 +118,31 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Exceptions</CardTitle>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Exception
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {exceptions.length === 0 ? (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <CalendarOff className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No exceptions configured
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add date-based closures, holidays, or blocked time ranges
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={handleAdd}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add First Exception
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
+      <SettingsSection
+        icon={<CalendarOff className="h-4 w-4" />}
+        title="Exceptions"
+        description="Date-based closures, holidays and blocked time ranges that override the weekly schedule."
+        footer={
+          <Button size="sm" onClick={handleAdd}>
+            <Plus className="h-3.5 w-3.5" /> Add exception
+          </Button>
+        }
+      >
+        <SettingsTableCard
+          isEmpty={sorted.length === 0}
+          emptyLabel="No exceptions configured. Add one to close a date or block a time range."
+        >
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className={tableHeadRowClass}>
+                <th className={thClass}>Date</th>
+                <th className={thClass}>Type</th>
+                <th className={thClass}>Hours</th>
+                <th className={thClass}>Reason</th>
+                <th className={`${thClass} text-right`}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {sorted.map((exception) => {
                 const dateFormatted = new Intl.DateTimeFormat("en", {
                   dateStyle: "medium",
@@ -146,66 +150,58 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
                 const hasTimeRange = exception.startTime || exception.endTime;
                 const colorClass =
                   EXCEPTION_TYPE_COLORS[exception.type as ReservationExceptionType] ||
-                  "bg-gray-100 text-gray-800";
+                  "border-line bg-canvas text-ink-2";
 
                 return (
-                  <div
-                    key={exception.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">
-                          {dateFormatted}
-                        </span>
-                        <Badge variant="outline" className={`text-xs ${colorClass}`}>
-                          {EXCEPTION_TYPE_LABELS[exception.type as ReservationExceptionType] ||
-                            exception.type}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {hasTimeRange ? (
-                          <span className="text-xs text-muted-foreground">
-                            {exception.startTime?.substring(0, 5) || "Start"} –{" "}
-                            {exception.endTime?.substring(0, 5) || "End"}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Full day
-                          </span>
-                        )}
-                        {exception.reason && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            &middot; {exception.reason}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(exception)}
-                        className="h-8 w-8"
+                  <tr key={exception.id} className={trClass}>
+                    <td className={`${tdClass} font-medium`}>{dateFormatted}</td>
+                    <td className={tdClass}>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${colorClass}`}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(exception.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
+                        {EXCEPTION_TYPE_LABELS[
+                          exception.type as ReservationExceptionType
+                        ] || exception.type}
+                      </span>
+                    </td>
+                    <td
+                      className={`${tdClass} font-mono text-[12px] tabular-nums text-ink-2`}
+                    >
+                      {hasTimeRange ? (
+                        <>
+                          {exception.startTime?.substring(0, 5) || "Start"} –{" "}
+                          {exception.endTime?.substring(0, 5) || "End"}
+                        </>
+                      ) : (
+                        "Full day"
+                      )}
+                    </td>
+                    <td className={`${tdClass} text-ink-2`}>
+                      {exception.reason || "—"}
+                    </td>
+                    <td className={tdActionsClass}>
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEdit(exception)}
+                        >
+                          Edit
+                        </Button>
+                        <ConfirmDeleteButton
+                          onConfirm={() => handleDelete(exception.id)}
+                          title="Delete this exception?"
+                          description={`${dateFormatted} goes back to the normal weekly schedule and starts accepting reservations again.`}
+                        />
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </SettingsTableCard>
+      </SettingsSection>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
@@ -289,20 +285,20 @@ function ExceptionForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           <FormField
             control={form.control}
             name="type"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type</FormLabel>
+              <FormItem className="min-w-0 space-y-[7px]">
+                <FieldLabel required>Type</FieldLabel>
                 <Select
                   onValueChange={field.onChange}
                   value={field.value ?? ""}
                   disabled={isPending}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className={controlSelectTriggerClass}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                   </FormControl>
@@ -325,10 +321,16 @@ function ExceptionForm({
             control={form.control}
             name="date"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date</FormLabel>
+              <FormItem className="min-w-0 space-y-[7px]">
+                <FieldLabel required>Date</FieldLabel>
                 <FormControl>
-                  <Input type="date" {...field} disabled={isPending} />
+                  <ControlInput
+                    type="date"
+                    mono
+                    prefix={<CalendarDays className="h-3.5 w-3.5" />}
+                    {...field}
+                    disabled={isPending}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -336,16 +338,18 @@ function ExceptionForm({
           />
 
           {!isFullDay && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="startTime"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Time (Optional)</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel optional>Start Time</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         type="time"
+                        mono
+                        prefix={<Clock className="h-3.5 w-3.5" />}
                         {...field}
                         value={field.value ?? ""}
                         disabled={isPending}
@@ -360,11 +364,13 @@ function ExceptionForm({
                 control={form.control}
                 name="endTime"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Time (Optional)</FormLabel>
+                  <FormItem className="min-w-0 space-y-[7px]">
+                    <FieldLabel optional>End Time</FieldLabel>
                     <FormControl>
-                      <Input
+                      <ControlInput
                         type="time"
+                        mono
+                        prefix={<Clock className="h-3.5 w-3.5" />}
                         {...field}
                         value={field.value ?? ""}
                         disabled={isPending}
@@ -381,10 +387,10 @@ function ExceptionForm({
             control={form.control}
             name="reason"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Reason (Optional)</FormLabel>
+              <FormItem className="min-w-0 space-y-[7px]">
+                <FieldLabel optional>Reason</FieldLabel>
                 <FormControl>
-                  <Textarea
+                  <ControlTextarea
                     placeholder="e.g., Christmas Day closure"
                     {...field}
                     value={field.value ?? ""}
@@ -408,8 +414,8 @@ function ExceptionForm({
             Cancel
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {item ? "Update" : "Create"}
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isPending ? "Saving…" : item ? "Save changes" : "Create exception"}
           </Button>
         </DialogFooter>
       </form>

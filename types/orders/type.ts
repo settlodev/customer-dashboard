@@ -12,7 +12,30 @@ export enum OrderStatus {
   // never had any items added before being cancelled. EOD purge sweeps
   // them so they don't pollute reports as a real cancellation.
   ABANDONED = "ABANDONED",
+  // Source order whose items were moved into another order by a merge —
+  // not a cancellation, the items live on in the target.
+  MERGED = "MERGED",
+  // Unpaid order written off as a loss (walkout); no revenue recognised.
+  WRITTEN_OFF = "WRITTEN_OFF",
+  // Parked unpaid order deferred for later payment with no customer
+  // attached; resolves to CLOSED or WRITTEN_OFF.
+  DEFERRED = "DEFERRED",
+  // A closed order still carrying a signed-bill receivable — a sale put on
+  // the customer's account and not yet settled. Presentation-only: the OMS
+  // stores it as CLOSED and returns SIGNED only to callers sending
+  // `X-Order-Status-Version: 2` (the dashboard's orders client does). Also a
+  // filter value on the search endpoints, meaning "closed and still owed".
+  // Settling returns the order to CLOSED; a write-off moves it to WRITTEN_OFF.
+  SIGNED = "SIGNED",
 }
+
+/**
+ * Closed in the till's sense — the order is finished, whether it was paid
+ * (CLOSED) or put on the customer's account (SIGNED). Use for gates that
+ * mean "no longer being served", not "paid".
+ */
+export const isClosedOrder = (status: OrderStatus | string | null | undefined) =>
+  status === OrderStatus.CLOSED || status === OrderStatus.SIGNED;
 
 export enum OrderType {
   IMMEDIATE = "IMMEDIATE",
@@ -191,6 +214,14 @@ export interface Order {
    * the order has none. See {@link orderRefundBadge}.
    */
   refundedAmount: number | null;
+  /**
+   * Display name of {@link customerId}, resolved by the OMS from its customer
+   * reference mirror on the list projection (`GET /orders/search`) so the
+   * orders table can show who an order was for without a per-row customer
+   * fetch. Null for walk-in orders (most of them); absent on the full
+   * `GET /orders/{id}` response, which carries the customer under `customer`.
+   */
+  customerName?: string | null;
 
   ticketsCount: number | null;
   billCount: number | null;
@@ -398,6 +429,16 @@ export interface PublicInvoice {
   locationName: string;
   locationAddress: string;
   locationPhone: string;
+  // Issuer letterhead (resolved server-side, location-first / business
+  // fallback) — same block the Accounting invoice documents carry.
+  issuerEmail?: string | null;
+  issuerTin?: string | null;
+  issuerVrn?: string | null;
+  issuerLogoUrl?: string | null;
+  issuerWebsite?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  issuerCountry?: string | null;
 
   orderNumber: string;
   orderStatus: string | null;
@@ -622,6 +663,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.CLOSED]: "Closed",
   [OrderStatus.CANCELLED]: "Cancelled",
   [OrderStatus.ABANDONED]: "Abandoned",
+  [OrderStatus.MERGED]: "Merged",
+  [OrderStatus.WRITTEN_OFF]: "Written off",
+  [OrderStatus.DEFERRED]: "Deferred",
+  [OrderStatus.SIGNED]: "Signed",
 };
 
 export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
@@ -633,6 +678,14 @@ export const ORDER_STATUS_PILL: Record<OrderStatus, string> = {
     "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400",
   [OrderStatus.ABANDONED]:
     "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  [OrderStatus.MERGED]:
+    "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  [OrderStatus.WRITTEN_OFF]:
+    "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+  [OrderStatus.DEFERRED]:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+  [OrderStatus.SIGNED]:
+    "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -676,6 +729,14 @@ export const orderRefundBadge = (
  * partial return is amber, the shade the rest of the table gives to "attend to
  * this" rather than "this is a loss".
  */
+/**
+ * Marker for a row still carrying a signed-bill receivable — the order was
+ * put on the customer's account and is owed until settled or written off.
+ * Rides under the status pill like the refund marker.
+ */
+export const SIGNED_BILL_PILL =
+  "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400";
+
 export const REFUND_PILL: Record<"full" | "partial", string> = {
   full: "bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
   partial:
@@ -719,6 +780,7 @@ export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
 export const ORDER_STATUS_FILTER_OPTIONS = [
   { label: "All", value: "" },
   { label: "Open", value: OrderStatus.OPEN },
+  { label: "Signed", value: OrderStatus.SIGNED },
   { label: "Closed", value: OrderStatus.CLOSED },
   { label: "Cancelled", value: OrderStatus.CANCELLED },
   { label: "Abandoned", value: OrderStatus.ABANDONED },

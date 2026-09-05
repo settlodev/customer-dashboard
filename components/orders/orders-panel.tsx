@@ -19,7 +19,12 @@ import { OrdersDateFilter } from "@/components/orders/orders-date-filter";
 import { OrdersTabNav } from "@/components/orders/orders-tab-nav";
 import { OrdersDataTable } from "@/components/tables/orders/orders-data-table";
 import { AbandonedDataTable } from "@/components/tables/orders/abandoned-data-table";
-import { Order, OrderStatus, PaymentStatus } from "@/types/orders/type";
+import {
+  isClosedOrder,
+  Order,
+  OrderStatus,
+  PaymentStatus,
+} from "@/types/orders/type";
 
 const formatMoney = (value: number) =>
   Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(value);
@@ -39,6 +44,16 @@ export interface OrdersKpis {
   grossSales: number;
   /** Count of orders not fully paid. */
   unpaidOrders: number;
+  /**
+   * Customer-ledger buckets, present only on the OMS `/orders/summary`
+   * response (not the Reports overview). Exclusive: ongoing = OPEN and never
+   * signed, signed = still carrying a signed-bill receivable in any status
+   * (`signedAmount` is its total), completed = CLOSED with nothing owed.
+   */
+  ongoingOrders?: number;
+  signedOrders?: number;
+  signedAmount?: number;
+  completedOrders?: number;
 }
 
 interface Props {
@@ -202,8 +217,7 @@ function OrdersView({
   const k: OrdersKpis = kpis ?? {
     totalOrders: rows.length,
     openOrders: rows.filter((o) => o.orderStatus === OrderStatus.OPEN).length,
-    closedOrders: rows.filter((o) => o.orderStatus === OrderStatus.CLOSED)
-      .length,
+    closedOrders: rows.filter((o) => isClosedOrder(o.orderStatus)).length,
     grossSales: rows.reduce((sum, o) => sum + (o.grossAmount ?? 0), 0),
     unpaidOrders: rows.filter(
       (o) => o.paymentStatus && o.paymentStatus !== PaymentStatus.PAID,

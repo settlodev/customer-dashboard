@@ -232,6 +232,9 @@ export const LocationSettingsSchema = z.object({
   alertPhoneNumber: z.string().max(20).optional(),
   sendDailySalesEmail: z.boolean().optional(),
   sendWeeklySalesEmail: z.boolean().optional(),
+  sendMonthlyPlReportEmail: z.boolean().optional(),
+  monthlyPlReportEmail: optionalEmail,
+  monthlyPlReportEmailCc: optionalEmailList,
 
   // Customer
   enableCustomerAccounts: z.boolean().optional(),

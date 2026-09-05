@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Plus, Star, Trash2 } from "lucide-react";
+import { Hash, Loader2, Percent, Plus, Star, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import {
+  ControlInput,
+  StandaloneField as Field,
+} from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -14,10 +16,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 import { SettingsSection } from "../shared/settings-section";
+import {
+  RowTag,
+  SettingsTableCard,
+  tableHeadRowClass,
+  tdActionsClass,
+  tdClass,
+  thClass,
+  trClass,
+} from "../shared/settings-table";
+import { ConfirmDeleteButton } from "../shared/confirm-delete-button";
 import {
   createTaxType,
   deleteTaxType,
@@ -85,14 +96,6 @@ export function TaxTypesPanel() {
 
   const onDelete = (t: TaxType) =>
     startTransition(async () => {
-      if (t.systemSeeded) {
-        toast({
-          variant: "destructive",
-          title: "Cannot delete",
-          description: "System-seeded tax types are protected.",
-        });
-        return;
-      }
       const result = await deleteTaxType(t.id);
       toast({
         variant: result.responseType === "success" ? "success" : "destructive",
@@ -121,7 +124,7 @@ export function TaxTypesPanel() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={openNew}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add tax type
+              <Plus className="h-3.5 w-3.5" /> Add tax type
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -130,143 +133,145 @@ export function TaxTypesPanel() {
                 {editing ? `Edit ${editing.name}` : "New tax type"}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Code</Label>
-                <Input
-                  value={form.code}
-                  onChange={(e) =>
-                    setForm({ ...form, code: e.target.value.toUpperCase() })
-                  }
-                  maxLength={10}
-                  placeholder="A"
-                />
-              </div>
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Standard Rate (VAT 18%)"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Rate (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    value={form.ratePercent}
-                    onChange={(e) =>
-                      setForm({ ...form, ratePercent: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Sort order</Label>
-                  <Input
-                    type="number"
-                    value={form.sortOrder}
-                    onChange={(e) =>
-                      setForm({ ...form, sortOrder: e.target.value })
-                    }
-                  />
-                </div>
+            <div className="space-y-3.5">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-3">
+                <Field label="Code" hint="Short identifier, e.g. A." required>
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      mono
+                      maxLength={10}
+                      prefix={<Tag className="h-3.5 w-3.5" />}
+                      value={form.code}
+                      onChange={(e) =>
+                        setForm({ ...form, code: e.target.value.toUpperCase() })
+                      }
+                      placeholder="A"
+                    />
+                  )}
+                </Field>
+                <Field label="Name" required className="sm:col-span-2">
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Standard Rate (VAT 18%)"
+                    />
+                  )}
+                </Field>
+                <Field label="Rate" className="sm:col-span-2">
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      type="number"
+                      inputMode="decimal"
+                      mono
+                      step="0.0001"
+                      suffix="%"
+                      prefix={<Percent className="h-3.5 w-3.5" />}
+                      value={form.ratePercent}
+                      onChange={(e) =>
+                        setForm({ ...form, ratePercent: e.target.value })
+                      }
+                    />
+                  )}
+                </Field>
+                <Field label="Sort order" hint="Lower shows first.">
+                  {(id) => (
+                    <ControlInput
+                      id={id}
+                      type="number"
+                      inputMode="numeric"
+                      mono
+                      prefix={<Hash className="h-3.5 w-3.5" />}
+                      value={form.sortOrder}
+                      onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+                    />
+                  )}
+                </Field>
               </div>
             </div>
             <DialogFooter>
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={isPending}
               >
                 Cancel
               </Button>
-              <Button onClick={submit} disabled={isPending}>
-                {isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                {editing ? "Save" : "Create"}
+              <Button onClick={submit} disabled={isPending || !form.code.trim() || !form.name.trim()}>
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {editing ? "Save changes" : "Create tax type"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       }
     >
-      <Card className="border-line">
-        <CardContent className="px-0 py-0">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              Loading…
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No tax types defined yet.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50/60 text-left text-xs font-semibold uppercase text-gray-400">
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3 text-right">Rate</th>
-                  <th className="px-4 py-3">Default</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {items.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-mono text-xs">{t.code}</td>
-                    <td className="px-4 py-3">
-                      {t.name}
-                      {t.systemSeeded && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                          System
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">
-                      {t.ratePercent.toFixed(2)}%
-                    </td>
-                    <td className="px-4 py-3">
-                      {t.isDefault ? (
-                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending}
-                          onClick={() => onSetDefault(t)}
-                        >
-                          Set default
-                        </Button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEdit(t)}
-                      >
-                        Edit
-                      </Button>
-                      {!t.systemSeeded && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending}
-                          onClick={() => onDelete(t)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      <SettingsTableCard
+        loading={loading}
+        isEmpty={items.length === 0}
+        emptyLabel="No tax types defined yet."
+      >
+        <table className="w-full border-collapse text-[13px]">
+          <thead>
+            <tr className={tableHeadRowClass}>
+              <th className={thClass}>Code</th>
+              <th className={thClass}>Name</th>
+              <th className={`${thClass} text-right`}>Rate</th>
+              <th className={thClass}>Default</th>
+              <th className={`${thClass} text-right`}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((t) => (
+              <tr key={t.id} className={trClass}>
+                <td className={`${tdClass} font-mono text-[12px]`}>{t.code}</td>
+                <td className={tdClass}>
+                  {t.name}
+                  {t.systemSeeded && <RowTag>System</RowTag>}
+                </td>
+                <td className={`${tdClass} text-right font-mono tabular-nums`}>
+                  {t.ratePercent.toFixed(2)}%
+                </td>
+                <td className={tdClass}>
+                  {t.isDefault ? (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2">
+                      <Star className="h-3.5 w-3.5 fill-warn text-warn" />
+                      Default
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isPending}
+                      onClick={() => onSetDefault(t)}
+                    >
+                      Set default
+                    </Button>
+                  )}
+                </td>
+                <td className={tdActionsClass}>
+                  <div className="inline-flex items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(t)}>
+                      Edit
+                    </Button>
+                    {!t.systemSeeded && (
+                      <ConfirmDeleteButton
+                        disabled={isPending}
+                        onConfirm={() => onDelete(t)}
+                        title={`Delete ${t.name}?`}
+                        description="Products and expenses already using this tax type keep their recorded rate, but it can no longer be selected."
+                      />
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SettingsTableCard>
     </SettingsSection>
   );
 }
