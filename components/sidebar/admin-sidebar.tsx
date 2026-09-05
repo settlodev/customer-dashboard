@@ -28,6 +28,7 @@ import {
   Package,
   PackagePlus,
   Radio,
+  Receipt,
   RotateCcw,
   ScrollText,
   ShieldCheck,
@@ -242,6 +243,12 @@ const NAV_GROUPS: NavGroup[] = [
         href: "/data-repair",
         icon: DatabaseZap,
         permissions: [PERM.ACTIVITY_LOG_READ],
+      },
+      {
+        title: "EFD / VFD",
+        href: "/efd-vfd",
+        icon: Receipt,
+        permissions: [PERM.VFD_TRIGGER],
       },
       {
         title: "App Version",
