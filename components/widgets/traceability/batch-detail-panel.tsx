@@ -39,11 +39,15 @@ import {
   listAttachments,
   registerAttachment,
 } from "@/lib/actions/attachment-actions";
-import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
 import { useUpload } from "@/lib/uploads/use-upload";
-import { CorrectValueModal } from "@/components/widgets/inventory/correct-value-modal";
 
 const PAGE_SIZE = 50;
+
+/** One value-correction line against this batch, with its parent document. */
+export interface BatchCorrectionLine {
+  correction: StockModification;
+  item: StockModificationItem;
+}
 
 interface Props {
   batch: StockBatchSummary;
@@ -54,9 +58,17 @@ interface Props {
     returned: number;
     truncated: boolean;
   };
+  /** Server-fetched so a correction saved from the page header shows up on
+   *  the router refresh the modal triggers (see the batch page). */
+  corrections: BatchCorrectionLine[];
 }
 
-export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
+export function BatchDetailPanel({
+  batch,
+  batchId,
+  initialMovements,
+  corrections,
+}: Props) {
   const [movements, setMovements] = useState<BatchMovement[]>(
     initialMovements.items,
   );
@@ -66,18 +78,6 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
   const [page, setPage] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-
-  // The batch panel is the universal correction entry point — opening-stock,
-  // GRN and adjustment batches all land here since none of those have a
-  // parent-document UI of their own (contrast with the stock-intake detail
-  // page, which already knows its own batches). No sourceReference is passed:
-  // this panel has no parent document to attribute the correction to.
-  const [correctValueOpen, setCorrectValueOpen] = useState(false);
-  // Bumped whenever the modal closes, so the corrections history below
-  // refetches after a save (CorrectValueModal itself only distinguishes
-  // success from cancel via a toast, not a callback — refetching on every
-  // close is a harmless extra request on cancel).
-  const [correctionsRefreshKey, setCorrectionsRefreshKey] = useState(0);
 
   const totalPages = Math.max(1, Math.ceil(totalMovements / PAGE_SIZE));
   const canPrev = page > 0;
@@ -117,17 +117,6 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
             />
             <Field label="Variant" value={batch.stockVariantDisplayName ?? "—"} />
             <Field
-              label="Location"
-              value={
-                <Link
-                  href={`/locations/${batch.locationId}`}
-                  className="font-mono text-muted-foreground hover:text-foreground hover:underline"
-                >
-                  {batch.locationId.slice(0, 8)}
-                </Link>
-              }
-            />
-            <Field
               label="On hand"
               value={Number(batch.quantityOnHand ?? 0).toLocaleString()}
             />
@@ -139,26 +128,14 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
             <Field
               label="Unit cost"
               value={
-                <div className="flex flex-col items-start gap-1.5">
-                  <span>
-                    {batch.unitCost != null ? (
-                      <Money
-                        amount={Number(batch.unitCost)}
-                        currency={batch.currency || DEFAULT_CURRENCY}
-                      />
-                    ) : (
-                      "—"
-                    )}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCorrectValueOpen(true)}
-                  >
-                    Correct value
-                  </Button>
-                </div>
+                batch.unitCost != null ? (
+                  <Money
+                    amount={Number(batch.unitCost)}
+                    currency={batch.currency || DEFAULT_CURRENCY}
+                  />
+                ) : (
+                  "—"
+                )
               }
             />
             <Field
@@ -364,23 +341,7 @@ export function BatchDetailPanel({ batch, batchId, initialMovements }: Props) {
         </CardContent>
       </Card>
 
-      <CorrectionsSection batchId={batchId} refreshKey={correctionsRefreshKey} />
-
-      <CorrectValueModal
-        variantId={batch.stockVariantId}
-        variantName={batch.stockVariantDisplayName ?? "Unknown item"}
-        batchId={batch.id}
-        batchNumber={batch.batchNumber}
-        currentUnitCost={batch.unitCost ?? 0}
-        quantityOnHand={batch.quantityOnHand}
-        initialQuantity={batch.initialQuantity}
-        currency={batch.currency}
-        open={correctValueOpen}
-        onOpenChange={(open) => {
-          setCorrectValueOpen(open);
-          if (!open) setCorrectionsRefreshKey((k) => k + 1);
-        }}
-      />
+      <CorrectionsSection lines={corrections} />
     </div>
   );
 }
@@ -518,60 +479,25 @@ function AffectedOrdersSection({ batchId }: { batchId: string }) {
 }
 
 /**
- * This batch's value-correction history — every CORRECTION-category stock
- * modification whose line items target this batch, whether it originated
- * from this panel's own "Correct value" button, the stock-intake detail
- * page, or the modification form's value-only mode. There's no
- * batch-scoped search endpoint, so this fetches CORRECTION modifications
- * (bounded to a generous page) and filters client-side by `batchId`.
+ * This batch's value-correction history. The lines are fetched by the page
+ * (see `loadCorrections` there); each row links to the stock modification it
+ * belongs to, so a correction opened from here and one opened from the
+ * stock-modifications list land on the same screen.
  */
-function CorrectionsSection({
-  batchId,
-  refreshKey,
-}: {
-  batchId: string;
-  refreshKey: number;
-}) {
-  const [lines, setLines] = useState<
-    { correction: StockModification; item: StockModificationItem }[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    setLoading(true);
-    searchStockModifications(0, 100, "CORRECTION")
-      .then((res) => {
-        const matches = (res?.content ?? []).flatMap((correction) =>
-          (correction.items ?? [])
-            .filter((item) => item.batchId === batchId)
-            .map((item) => ({ correction, item })),
-        );
-        setLines(matches);
-      })
-      .catch(() => {
-        toast({
-          variant: "destructive",
-          title: "Couldn't load value corrections",
-          description: "Please try again.",
-        });
-        setLines([]);
-      })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batchId, refreshKey]);
-
+function CorrectionsSection({ lines }: { lines: BatchCorrectionLine[] }) {
   return (
     <Card className="rounded-xl shadow-sm">
       <CardContent className="pt-6 space-y-3">
-        <h3 className="text-lg font-medium">Value corrections</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Value corrections</h3>
+          {lines.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {lines.length.toLocaleString()} total
+            </span>
+          )}
+        </div>
 
-        {loading ? (
-          <div className="space-y-1.5">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-        ) : lines.length === 0 ? (
+        {lines.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
             No value corrections recorded against this batch yet.
           </p>
@@ -580,6 +506,9 @@ function CorrectionsSection({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                    Reference
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">
                     When
                   </th>
@@ -603,6 +532,14 @@ function CorrectionsSection({
               <tbody className="divide-y">
                 {lines.map(({ correction, item }, idx) => (
                   <tr key={`${correction.id}-${idx}`} className="align-top">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <Link
+                        href={`/stock-modifications/${correction.id}`}
+                        className="font-mono text-xs font-semibold text-ink hover:underline"
+                      >
+                        {correction.modificationNumber}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(correction.modificationDate).toLocaleString("en-GB", {
                         day: "2-digit",
