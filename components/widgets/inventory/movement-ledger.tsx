@@ -58,8 +58,12 @@ import {
   getMovementSummaryByVariant,
   getLedgerDiscrepancies,
 } from "@/lib/actions/stock-movement-actions";
+import { MovementLedgerExportButton } from "@/components/widgets/inventory/movement-ledger-export-button";
 import {
+  analyseLedgerRows,
   dayLabel,
+  LEDGER_EPS,
+  type LedgerRow,
   localDayKey,
   movementTypeLabel,
   qty,
@@ -68,7 +72,6 @@ import {
   referenceIdentity,
   shortId,
   signedQty,
-  signedQuantity,
   timeLabel,
 } from "@/lib/stock-movement-display";
 import {
@@ -83,9 +86,6 @@ import {
 } from "@/types/stock-movement/type";
 
 const PAGE_SIZES = [25, 50, 100, 200] as const;
-
-/** Balances are decimals; compare with a tolerance rather than `!==`. */
-const EPS = 1e-6;
 
 export interface LedgerRange {
   /** yyyy-MM-dd, or "" for all time. */
@@ -105,72 +105,6 @@ interface Props {
   currency: string;
   /** Actor id → display name, keyed by both staff id and auth id. */
   staffNames: Record<string, string>;
-}
-
-interface LedgerRow {
-  movement: StockMovement;
-  signed: number;
-  /** `previousBalance + signed − newBalance`; non-null only when it doesn't reconcile. */
-  mathDelta: number | null;
-  /**
-   * Difference between this row's opening balance and the closing balance of
-   * the entry written immediately before it. Non-null only when the chain is
-   * broken — i.e. stock changed without a movement being recorded.
-   */
-  chainGap: number | null;
-  /** Backend never captured before/after balances for this row (pre-V021). */
-  untracked: boolean;
-  negative: boolean;
-}
-
-/**
- * Grades each entry on the page.
- *
- * Two independent checks:
- *  - *row math* — does `before + qty` actually equal `after`?
- *  - *chain continuity* — does this entry open where its predecessor closed?
- *
- * The chain check is what surfaces stock that moved without a movement being
- * written. It reads `previousClosingBalance`, which the backend chains in
- * commit order, rather than looking at the neighbouring row. Those are not the
- * same entry whenever a row's business time back-dates its write — a stock
- * modification carrying an operator's date, a GRN's received date, a bill
- * opened long before it was closed. Comparing against the neighbour reported
- * every such row as an unexplained change, in equal-and-opposite pairs that
- * netted to zero over each day because nothing was actually missing.
- *
- * Since the backend computes it before applying any type filter, the check
- * survives filtering too — a hidden row still holds its place in the chain.
- */
-function analyse(movements: StockMovement[]): LedgerRow[] {
-  return movements.map((m) => {
-    const signed = signedQuantity(m);
-    const prev = m.previousBalance;
-    const next = m.newBalance;
-    const untracked = prev == null || next == null;
-
-    let mathDelta: number | null = null;
-    if (!untracked) {
-      const delta = prev + signed - next;
-      if (Math.abs(delta) > EPS) mathDelta = delta;
-    }
-
-    // Null on the range's first entry — nothing precedes it to check against.
-    let chainGap: number | null = null;
-    if (prev != null && m.previousClosingBalance != null) {
-      const gap = prev - m.previousClosingBalance;
-      if (Math.abs(gap) > EPS) chainGap = gap;
-    }
-
-    return {
-      movement: m,
-      signed,
-      mathDelta,
-      chainGap,
-      untracked,
-      negative: next != null && next < 0,
-    };
-  });
 }
 
 /**
@@ -312,7 +246,7 @@ export function MovementLedger({
     setPage(0);
   }, []);
 
-  const rows = useMemo(() => analyse(data.content), [data.content]);
+  const rows = useMemo(() => analyseLedgerRows(data.content), [data.content]);
 
   const anomalyCount = useMemo(
     () =>
@@ -441,6 +375,19 @@ export function MovementLedger({
                 On this page
                 <span className="font-mono text-[10.5px]">{anomalyCount}</span>
               </button>
+              <MovementLedgerExportButton
+                locationId={locationId}
+                variantId={variantId}
+                variantLabel={variantLabel}
+                startDate={startDate}
+                endDate={endDate}
+                range={range}
+                movementType={typeParam}
+                currency={currency}
+                staffNames={staffNames}
+                total={data.totalElements}
+                disabled={loading}
+              />
             </div>
           </div>
 
@@ -953,7 +900,7 @@ function EntryDetail({
   const avgCostMoved =
     m.previousAverageCost != null &&
     m.newAverageCost != null &&
-    Math.abs(m.newAverageCost - m.previousAverageCost) > EPS;
+    Math.abs(m.newAverageCost - m.previousAverageCost) > LEDGER_EPS;
 
   // occurredAt is when it happened; eventTime is when analytics received it. A
   // wide gap means the event was replayed or backfilled — which is exactly the

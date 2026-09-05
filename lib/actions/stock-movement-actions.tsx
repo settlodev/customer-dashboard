@@ -117,6 +117,58 @@ export async function getVariantMovementsPage(
   }
 }
 
+/** Rows per request when draining a ledger for export. */
+const EXPORT_PAGE_SIZE = 1000;
+/** Hard ceiling on an export — past this the caller is told to narrow the period. */
+const EXPORT_MAX_ROWS = 50_000;
+
+export interface VariantMovementExport {
+  /** Every matching row, newest first — the same order the ledger pages in. */
+  rows: StockMovement[];
+  /** True when the ledger has more rows than {@link EXPORT_MAX_ROWS}; `rows` holds the newest. */
+  truncated: boolean;
+}
+
+/**
+ * Every movement matching a variant ledger query, not just one page of it.
+ * Backs the ledger's CSV export, which must contain the whole filtered
+ * history rather than the page on screen.
+ *
+ * Unlike the page fetchers above this one THROWS on failure: an export that
+ * quietly came back empty would be downloaded and trusted, whereas an empty
+ * page just renders as "no movements".
+ */
+export async function getVariantMovementsAll(
+  q: Omit<VariantMovementQuery, "page" | "size">,
+): Promise<VariantMovementExport> {
+  const apiClient = new ApiClient("reports");
+  const dates = resolveDates(q.startDate, q.endDate);
+  const rows: StockMovement[] = [];
+  for (let page = 0; ; page++) {
+    const data = parseStringify(
+      await apiClient.get(`/api/v2/analytics/stock-movements`, {
+        params: {
+          locationId: q.locationId,
+          variantId: q.variantId,
+          startDate: dates.start,
+          endDate: dates.end,
+          page,
+          size: EXPORT_PAGE_SIZE,
+          ...(q.movementType && { movementType: q.movementType }),
+          ...(q.referenceType && { referenceType: q.referenceType }),
+        },
+      }),
+    ) as PageResponse<StockMovement>;
+    rows.push(...data.content);
+    if (data.last || data.content.length === 0) {
+      return { rows, truncated: false };
+    }
+    if (rows.length >= EXPORT_MAX_ROWS) {
+      return { rows: rows.slice(0, EXPORT_MAX_ROWS), truncated: true };
+    }
+  }
+}
+
 /**
  * Every point in a variant's ledger where the running balance stops
  * reconciling, scanned server-side across the whole range.
