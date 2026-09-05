@@ -14,7 +14,10 @@ import NoItems from "@/components/layouts/no-items";
 import DataLoadError from "@/components/layouts/data-load-error";
 import { softFetch } from "@/lib/list-fallback";
 import { columns } from "@/components/tables/department/columns";
-import { searchDepartment } from "@/lib/actions/department-actions";
+import {
+  getDepartmentCount,
+  searchDepartment,
+} from "@/lib/actions/department-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getEntityEntitlements } from "@/lib/actions/entitlement-actions";
 import { UpgradeGate } from "@/components/widgets/upgrade-gate";
@@ -36,9 +39,14 @@ export default async function Page({ searchParams }: Params) {
   // still exists for every location regardless — this only hides the
   // CRUD surface for packages that don't include the feature.
   const currentLocation = await getCurrentLocation();
-  if (currentLocation?.id) {
-    const item = await getEntityEntitlements(currentLocation.id);
-    const allowed = item ? item.features["DEPARTMENTS_MODULE"] === true : true;
+  const locationId = currentLocation?.id;
+  const entitlement = locationId
+    ? await getEntityEntitlements(locationId)
+    : null;
+  if (locationId) {
+    const allowed = entitlement
+      ? entitlement.features["DEPARTMENTS_MODULE"] === true
+      : true;
     if (!allowed) {
       return (
         <PageShell>
@@ -60,11 +68,18 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedSearchParams.limit);
   const status = parseListStatus(resolvedSearchParams.status);
 
-  const maxAllowed = currentLocation?.id
-    ? (await getEntityEntitlements(currentLocation.id))?.limits["MAX_DEPARTMENTS"]
-    : undefined;
+  const maxAllowed = entitlement?.limits["MAX_DEPARTMENTS"];
 
-  const responseData = await softFetch(searchDepartment(q, page, pageLimit));
+  // Departments and MAX_DEPARTMENTS are both per LOCATION, so the list and
+  // the cap headroom are scoped to the active location. The headroom comes
+  // from the count endpoint because that is the exact number Accounts checks
+  // on create (non-deleted rows, deactivated included) — the paged total was
+  // previously an account-wide figure, so a two-location account read as
+  // "2 of 2 used" before either location had added anything.
+  const [responseData, count] = await Promise.all([
+    softFetch(searchDepartment(q, page, pageLimit, locationId)),
+    locationId ? softFetch(getDepartmentCount(locationId)) : null,
+  ]);
 
   // Departments don't carry an `archivedAt` timestamp; the
   // `active` boolean acts as the soft-delete proxy. Treat
@@ -75,6 +90,7 @@ export default async function Page({ searchParams }: Params) {
   );
   const total = responseData?.totalElements ?? 0;
   const pageCount = responseData?.totalPages ?? 0;
+  const used = count?.total ?? total;
 
   return (
     <PageShell>
@@ -83,13 +99,13 @@ export default async function Page({ searchParams }: Params) {
         title="Departments"
         subtitle={
           maxAllowed !== undefined && maxAllowed !== -1
-            ? `Top-level grouping above categories. ${total} of ${maxAllowed} used.`
+            ? `Top-level grouping above categories. ${used} of ${maxAllowed} used.`
             : "Top-level grouping above categories."
         }
         actions={
           maxAllowed !== undefined &&
           maxAllowed !== -1 &&
-          total >= maxAllowed ? (
+          used >= maxAllowed ? (
             <Button disabled title={`Your plan caps you at ${maxAllowed} departments per location`}>
               <Plus className="mr-1.5 h-4 w-4" />
               Add Department

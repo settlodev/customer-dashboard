@@ -23,10 +23,17 @@ export const fetchAllDepartments = async (): Promise<Department[]> => {
   }
 };
 
+/**
+ * Paged department list. Pass the active location id so the page is scoped
+ * to that location — without it Accounts answers account-wide, which mixes
+ * every sibling location's departments (each with its own Main) into one
+ * list and one total.
+ */
 export const searchDepartment = async (
   q: string,
   page: number,
   pageLimit: number,
+  locationId?: string,
 ): Promise<ApiResponse<Department>> => {
   try {
     const apiClient = new ApiClient();
@@ -35,6 +42,7 @@ export const searchDepartment = async (
       page: String(page ? page - 1 : 0),
       size: String(pageLimit || 10),
     });
+    if (locationId) params.append("locationId", locationId);
     const data = await apiClient.get(
       `/api/v1/departments?${params.toString()}`,
     );
@@ -133,10 +141,20 @@ export const getDepartment = async (id: string): Promise<Department> => {
 // Count
 // ---------------------------------------------------------------------------
 
-export const getDepartmentCount = async (): Promise<DepartmentCount> => {
+/**
+ * Department count for ONE location. `total` is the exact number Accounts
+ * compares against MAX_DEPARTMENTS on create: every non-deleted row,
+ * deactivated ones included (Main counts too).
+ */
+export const getDepartmentCount = async (
+  locationId: string,
+): Promise<DepartmentCount> => {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(`/api/v1/departments/count`);
+    const params = new URLSearchParams({ locationId });
+    const data = await apiClient.get(
+      `/api/v1/departments/count?${params.toString()}`,
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
