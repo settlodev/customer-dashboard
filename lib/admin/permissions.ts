@@ -35,6 +35,10 @@ export const PERM = {
   REPAIR_APPROVE: "internal:repair:approve",
   APP_VERSION_MANAGE: "internal:app_version:manage",
   APP_CAMPAIGN_MANAGE: "internal:app_campaign:manage",
+  // Gates the EFD/VFD admin page's "run now" scheduler triggers. Not yet in
+  // Auth's InternalPermissions catalog — add it there and grant it to a role
+  // before any staff JWT will actually carry it.
+  VFD_TRIGGER: "internal:vfd:trigger",
   // Loans / Financing — lender/operator (admin.localhost). Deliberately the
   // unprefixed `loans:*` keys (NOT `internal:*`) so they match the Loan
   // Management Service's PERM_loans:* @PreAuthorize — see Auth InternalPermissions.
